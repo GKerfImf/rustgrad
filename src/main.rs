@@ -209,13 +209,13 @@ fn top_sort(root: RefValue) -> Vec<RefValue>{
     return result
 }
 fn forward(root: RefValue) { 
-    let nodes = top_sort(root.clone());
+    let nodes = top_sort(root.clone());     // TODO: Don't compute top. sort every single time
     for node in nodes.iter() { 
         forwprop_node(node.clone());
     }
 }
 fn backward(root: RefValue) { 
-    let nodes = top_sort(root.clone());
+    let nodes = top_sort(root.clone());     // TODO: Don't compute top. sort every single time
     root.borrow_mut().grad = 1.0;
     for node in nodes.iter().rev() {
         backprop_node(node.clone());
@@ -234,12 +234,12 @@ fn update_weights(variables: &Vec<RefValue>) {
 
 #[derive(Debug)]
 struct Neuron {
-    ins: Vec<RefValue>, // Input variables
-    out: RefValue,      // Output variable
+    ins: Vec<RefValue>,     // Input variables          // TODO: should be [&Vec<RefValue>]
+    out: RefValue,          // Output variable
 
-    w: Vec<RefValue>,   // Weight variables
-    b: RefValue,        // Bias variable
-    nlin: bool          // Apply ReLU [true/false]
+    w: Vec<RefValue>,       // Weight variables
+    b: RefValue,            // Bias variable
+    nlin: bool              // Apply ReLU (true/false)
 }
 impl Sum<RefValue> for RefValue {
     fn sum<I>(iter: I) -> Self
@@ -281,40 +281,96 @@ impl Neuron {
         update_weights(&self.w);
         update_weights(&vec![self.b.clone()]);
     }
+}
 
-    // TODO: del 
-    fn forward_temp(&self, xs: &Vec<f64>) { 
+#[derive(Debug)]
+struct Layer {
+    ins: Vec<RefValue>,         // Input variables
+    outs: Vec<RefValue>,        // Output variables
+    neurons: Vec<Neuron>        // Neurons
+}
+
+impl Layer { 
+    // [ins]  -- vector of inputs
+    // [nout] -- number of output variables, essentially the number of neurons
+    // [nlin] -- Apply ReLU to [outs] (true/false)
+    fn new(ins: Vec<RefValue>, nout: u32, nlin: bool) -> Layer {
+        let mut neurons: Vec<Neuron> = Vec::with_capacity(nout as usize);
+        let mut outs: Vec<RefValue> = Vec::with_capacity(nout as usize);
+
+        for _ in 0..nout {
+            let neuron = Neuron::new(ins.clone(), nlin);
+            outs.push(neuron.out.clone());
+            neurons.push(neuron);
+        }
+        Layer { ins: ins, outs: outs, neurons: neurons }
+    }
+    fn update_weights(&self) {
+        for n in self.neurons.iter() { 
+            n.update_weights()
+        }
+    }
+}
+
+// MultiLayer Perceptron
+#[derive(Debug)]
+struct MLP {
+    ins: Vec<RefValue>,     // Input variables
+    outs: Vec<RefValue>,    // Output variables
+    layers: Vec<Layer>      // TODO: comment 
+}
+
+impl MLP { 
+    fn new(lsizes: Vec<u32>) -> MLP {
+        let mut ins: Vec<RefValue> = Vec::with_capacity(lsizes[0] as usize);
+        for _ in 0..lsizes[0] {
+            ins.push(Value::new(0.0));
+        }
+
+        let mut layers: Vec<Layer> = Vec::with_capacity(lsizes.len());
+        let mut outs = ins.clone(); 
+
+        for i in 1..lsizes.len() { 
+            let l = Layer::new(outs.clone(), lsizes[i], i != lsizes.len() - 1);
+            outs = l.outs.clone();
+            layers.push(l);
+        }
+        MLP { ins: ins, outs: outs, layers: layers }
+    }
+    fn update_weights(&self) {
+        for l in self.layers.iter() { 
+            l.update_weights()
+        }
+    }
+    fn forward(&self, xs: &Vec<f64>) { 
+        if xs.len() != self.ins.len() { 
+            panic!("Number of inputs does not match!")
+        }
         // Update input variables
         for (i,x) in self.ins.iter().zip(xs.iter()) { 
             i.borrow_mut().data = *x;
         }
-        // Run forward pass
-        forward(self.out.clone());
+        // Run forward pass on all outputs
+        for out in self.outs.iter() { 
+            forward(out.clone());
+        }
     }
-    // TODO: del 
-    fn backward_temp(&self) { 
-        backward(self.out.clone());
+    fn backward(&self) { 
+        for out in self.outs.iter() { 
+            backward(out.clone());
+        }
     }
 }
 
 fn main() {
 
-    // Create a vector of input variables
-    let nin = 3;
-    let mut input: Vec<RefValue> = Vec::with_capacity(nin as usize);
-    for _ in 0..nin {
-        input.push(Value::new(0.0));
-    }
-    let n = Neuron::new(input, false);
+    let mlp = MLP::new(vec![4,10,1]);
 
-    for _ in 0..100 { 
-        n.forward_temp(&vec![1.0, 2.0, 3.0]);
-        n.backward_temp();
-        n.update_weights();
-        println!("{:?}", n.out.clone().borrow().data);
+    for _ in 0..10 {
+        mlp.forward(&vec![1.0, 1.0, 1.0, 1.0]);
+        println!("{:?}", mlp.outs[0].clone().borrow().data);
+
+        mlp.backward();
+        mlp.update_weights();
     }
-    println!("{:?}", n.w);
-}
-    }
-    println!("a={} b={}", a.borrow().data, b.borrow().data);
 }
