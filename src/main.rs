@@ -9,6 +9,7 @@ use rand::Rng;
 use std::ops::{Add,Mul};
 use std::clone::Clone;
 use std::iter::Sum;
+use std::fmt;
 
 // ------------------------------------------------
 // https://stackoverflow.com/a/57955092/8125485
@@ -37,6 +38,17 @@ enum Op {
     Mul,
     ReLu
 }
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Op::Leaf => { write!(f, "") }
+            Op::Add => { write!(f, "+") }
+            Op::Mul => { write!(f, "*") }
+            Op::ReLu => { write!(f, "RL") }
+        }   
+    }
+}
+
 impl Default for Op {
     fn default() -> Self { Op::Leaf }
 }
