@@ -185,7 +185,8 @@ fn backprop_node(value: RefValue) {
             value.borrow().children[1].borrow_mut().grad += l_data * grad;
         }
         Op::ReLu => { 
-            todo!()
+            let grad = value.borrow().grad;
+            value.borrow().children[0].borrow_mut().grad += if grad > 0.0 { grad } else { 0.0 };
         }
     }
 }
