@@ -37,6 +37,9 @@ impl Default for Op {
     fn default() -> Self { Op::Leaf }
 }
 
+// https://stackoverflow.com/a/71564648/8125485
+static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+
 // https://github.com/nrc/r4cppp/blob/master/graphs/src/rc_graph.rs
 #[derive(Debug,Default)]
 struct Value {
@@ -47,9 +50,6 @@ struct Value {
     children: Vec<Rc<RefCell<Value>>> 
 }
 type RefValue = Rc<RefCell<Value>>;
-
-// https://stackoverflow.com/a/71564648/8125485
-static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Value { 
     fn new(data: f64) -> RefValue {
