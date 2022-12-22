@@ -117,7 +117,10 @@ impl Mul for RefValue {
     }
 }
 fn relu(a: RefValue) -> RefValue { 
-    return RefValue(Rc::new(RefCell::new(
+    log!("New [ReLu] node ID={}", NEXT_ID.load(Ordering::Relaxed));
+    log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), a.borrow().id);
+    
+    return RefValue(Rc::new(RefCell::new(        
         Value { 
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             data: if a.borrow().data < 0.0 { 0.0 } else { a.borrow().data },
