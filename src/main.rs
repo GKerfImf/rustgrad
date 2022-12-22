@@ -8,7 +8,7 @@ use std::ops::Deref;
 use rand::Rng;
 use std::ops::{Add,Mul};
 use std::clone::Clone;
-
+use std::iter::Sum;
 
 // ------------------------------------------------
 // https://stackoverflow.com/a/57955092/8125485
@@ -45,7 +45,7 @@ impl Default for Op {
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 // https://github.com/nrc/r4cppp/blob/master/graphs/src/rc_graph.rs
-#[derive(Default)]
+#[derive(Default,Debug)]
 struct Value {
     id: u64,
     data: f64,
@@ -53,6 +53,7 @@ struct Value {
     op: Op,
     children: Vec<RefValue> 
 }
+#[derive(Debug)]
 struct RefValue(Rc<RefCell<Value>>);
 
 impl Deref for RefValue {
@@ -156,7 +157,6 @@ fn forwprop_node(value: RefValue) {
         }
     }
 }
-
 fn backprop_node(value: RefValue) {
     match value.borrow().op { 
         Op::Leaf => { }
@@ -195,14 +195,12 @@ fn top_sort(root: RefValue) -> Vec<RefValue>{
     dfs(&mut result, &mut visited, root);
     return result
 }
-
 fn forward(root: RefValue) { 
     let nodes = top_sort(root.clone());
     for node in nodes.iter() { 
         forwprop_node(node.clone());
     }
 }
-
 fn backward(root: RefValue) { 
     let nodes = top_sort(root.clone());
     root.borrow_mut().grad = 1.0;
@@ -210,7 +208,6 @@ fn backward(root: RefValue) {
         backprop_node(node.clone());
     }
 }
-
 fn update_weights(variables: &Vec<RefValue>) {
     let rate = 0.1; 
 
@@ -220,19 +217,95 @@ fn update_weights(variables: &Vec<RefValue>) {
     }
 }
 
+// ------------------------------------------------
+
+trait Callable {
+    fn call(&self, xs: Vec<f64>);
+}
+
+#[derive(Debug)]
+struct Neuron {
+    ins: Vec<RefValue>, // Input variables
+    out: RefValue,      // Output variable
+
+    w: Vec<RefValue>,   // Weight variables
+    b: RefValue,        // Bias variable
+    nlin: bool          // Apply ReLU [true/false]
+}
+impl Sum<RefValue> for RefValue {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = RefValue>,
+    {
+        let mut result = Value::new(0.0);
+        for v in iter {
+            result = result + v; // TODO: [_ = _ + _] --> [_ += _]
+        }
+        result
+    }
+}
+impl Neuron { 
+    fn new(ins: Vec<RefValue>, nlin: bool) -> Neuron { 
+        let mut rng = rand::thread_rng();
+
+        // Create a vector of weights and a bias variable
+        let mut weights: Vec<RefValue> = Vec::with_capacity(ins.len() as usize);
+        for _ in 0..ins.len() {
+            weights.push(Value::new(2.0* rng.gen::<f64>() - 1.0));
+        }
+        let bias: RefValue = Value::new(0.0);
+
+        // [act = ins * weights + bias]
+        let act = ins.iter().zip(weights.iter())
+            .map( |(i,w)| i.clone() * w.clone() )
+            .sum::<RefValue>() + bias.clone();
+
+        // If [nlin = true], add ReLu non-linearity
+        let out = if nlin { relu(act) } else { act };
+
+        Neuron { 
+            ins: ins, out: out, 
+            w: weights, b: bias, nlin: nlin       
+        }
+    }
+    fn update_weights(&self) { 
+        update_weights(&self.w);
+        update_weights(&vec![self.b.clone()]);
+    }
+
+    // TODO: del 
+    fn forward_temp(&self, xs: &Vec<f64>) { 
+        // Update input variables
+        for (i,x) in self.ins.iter().zip(xs.iter()) { 
+            i.borrow_mut().data = *x;
+        }
+        // Run forward pass
+        forward(self.out.clone());
+    }
+    // TODO: del 
+    fn backward_temp(&self) { 
+        backward(self.out.clone());
+    }
+}
+
 fn main() {
 
-    let a = Value::new(12.0);
-    let b = Value::new(-22.0);
-    let variables = vec![a.clone(),b.clone()];
-
-    let loss = a.clone() * a.clone() + b.clone() * b.clone(); 
+    // Create a vector of input variables
+    let nin = 3;
+    let mut input: Vec<RefValue> = Vec::with_capacity(nin as usize);
+    for _ in 0..nin {
+        input.push(Value::new(0.0));
+    }
+    let n = Neuron::new(input, false);
 
     for _ in 0..100 { 
-        backward(loss.clone());
-        update_weights(&variables);
-        forward(loss.clone());
-        println!("{}", loss.borrow().data);
+        n.forward_temp(&vec![1.0, 2.0, 3.0]);
+        n.backward_temp();
+        n.update_weights();
+        println!("{:?}", n.out.clone().borrow().data);
+    }
+    println!("{:?}", n.w);
+}
     }
     println!("a={} b={}", a.borrow().data, b.borrow().data);
 }
