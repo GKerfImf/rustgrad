@@ -219,10 +219,6 @@ fn update_weights(variables: &Vec<RefValue>) {
 
 // ------------------------------------------------
 
-trait Callable {
-    fn call(&self, xs: Vec<f64>);
-}
-
 #[derive(Debug)]
 struct Neuron {
     ins: Vec<RefValue>, // Input variables
