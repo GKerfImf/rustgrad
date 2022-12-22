@@ -4,7 +4,11 @@ use std::{cell::RefCell, rc::Rc};
 use std::collections::HashSet;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
+use std::ops::Deref;
 use rand::Rng;
+use std::ops::{Add,Mul};
+use std::clone::Clone;
+
 
 // ------------------------------------------------
 // https://stackoverflow.com/a/57955092/8125485
@@ -41,61 +45,79 @@ impl Default for Op {
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 // https://github.com/nrc/r4cppp/blob/master/graphs/src/rc_graph.rs
-#[derive(Debug,Default)]
+#[derive(Default)]
 struct Value {
     id: u64,
     data: f64,
     grad: f64,
     op: Op,
-    children: Vec<Rc<RefCell<Value>>> 
+    children: Vec<RefValue> 
 }
-type RefValue = Rc<RefCell<Value>>;
+struct RefValue(Rc<RefCell<Value>>);
 
+impl Deref for RefValue {
+    type Target = Rc<RefCell<Value>>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl Clone for RefValue {
+    fn clone(&self) -> Self {
+        RefValue(self.0.clone())
+    }
+}
 impl Value { 
     fn new(data: f64) -> RefValue {
         log!("New [Leaf] node ID={}", NEXT_ID.load(Ordering::Relaxed));
-        Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value { 
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: data, 
                 ..Default::default() 
             }
-        ))
+        )))
     }
 }
+impl Add for RefValue {
+    type Output = RefValue;
 
-fn add(a: RefValue, b: RefValue) -> RefValue{ 
-    log!("New [+] node ID={}", NEXT_ID.load(Ordering::Relaxed));
-    log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), a.borrow().id);
-    log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), b.borrow().id);
-
-    return Rc::new(RefCell::new(
-        Value { 
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            data: a.borrow().data + b.borrow().data,
-            grad: 0.0,
-            op: Op::Add,
-            children: vec![a.clone(), b.clone()]
-        }
-    ))
+    fn add(self, other: RefValue) -> RefValue{
+        log!("New [+] node ID={}", NEXT_ID.load(Ordering::Relaxed));
+        log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), self.borrow().id);
+        log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), other.borrow().id);
+    
+        return RefValue(Rc::new(RefCell::new(
+            Value { 
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: self.borrow().data + other.borrow().data,
+                grad: 0.0,
+                op: Op::Add,
+                children: vec![self.clone(), other.clone()]
+            }
+        )))
+    }
 }
-fn mul(a: RefValue, b: RefValue) -> RefValue{ 
-    log!("New [*] node ID={}", NEXT_ID.load(Ordering::Relaxed));
-    log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), a.borrow().id);
-    log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), b.borrow().id);
+impl Mul for RefValue {
+    type Output = RefValue;
 
-    return Rc::new(RefCell::new(
-        Value { 
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            data: a.borrow().data * b.borrow().data,
-            grad: 0.0,
-            op: Op::Mul,
-            children: vec![a.clone(), b.clone()]
-        }
-    ))
+    fn mul(self, other: RefValue) -> RefValue{
+        log!("New [*] node ID={}", NEXT_ID.load(Ordering::Relaxed));
+        log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), self.borrow().id);
+        log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), other.borrow().id);
+    
+        return RefValue(Rc::new(RefCell::new(
+            Value { 
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: self.borrow().data * other.borrow().data,
+                grad: 0.0,
+                op: Op::Mul,
+                children: vec![self.clone(), other.clone()]
+            }
+        )))
+    }
 }
 fn relu(a: RefValue) -> RefValue { 
-    return Rc::new(RefCell::new(
+    return RefValue(Rc::new(RefCell::new(
         Value { 
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
             data: if a.borrow().data < 0.0 { 0.0 } else { a.borrow().data },
@@ -103,7 +125,7 @@ fn relu(a: RefValue) -> RefValue {
             op: Op::ReLu,
             children: vec![a.clone()]
         }
-    ))
+    )))
 }
 
 fn forwprop_node(value: RefValue) {
@@ -201,7 +223,7 @@ fn main() {
     let b = Value::new(-22.0);
     let variables = vec![a.clone(),b.clone()];
 
-    let loss = add(mul(a.clone(),a.clone()), mul(b.clone(),b.clone()));
+    let loss = a.clone() * a.clone() + b.clone() * b.clone(); 
 
     for _ in 0..100 { 
         backward(loss.clone());
