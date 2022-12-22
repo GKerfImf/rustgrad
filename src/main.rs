@@ -208,14 +208,12 @@ fn top_sort(root: RefValue) -> Vec<RefValue>{
     dfs(&mut result, &mut visited, root);
     return result
 }
-fn forward(root: RefValue) { 
-    let nodes = top_sort(root.clone());     // TODO: Don't compute top. sort every single time
+fn forward(nodes: &Vec<RefValue>) { 
     for node in nodes.iter() { 
         forwprop_node(node.clone());
     }
 }
-fn backward(root: RefValue) { 
-    let nodes = top_sort(root.clone());     // TODO: Don't compute top. sort every single time
+fn backward(root: RefValue, nodes: &Vec<RefValue>) { 
     root.borrow_mut().grad = 1.0;
     for node in nodes.iter().rev() {
         backprop_node(node.clone());
@@ -317,7 +315,10 @@ impl Layer {
 struct MLP {
     ins: Vec<RefValue>,     // Input variables
     outs: Vec<RefValue>,    // Output variables
-    layers: Vec<Layer>      // TODO: comment 
+    layers: Vec<Layer>,     // TODO: comment
+
+    uni_out: RefValue,      // TODO: comment 
+    top_sort: Vec<RefValue> // TODO: comment 
 }
 
 impl MLP { 
@@ -335,7 +336,10 @@ impl MLP {
             outs = l.outs.clone();
             layers.push(l);
         }
-        MLP { ins: ins, outs: outs, layers: layers }
+        let uni_out = outs.clone().iter().map( |i| i.clone() ).sum::<RefValue>();  // TODO: improve? 
+        let top_sort = top_sort(uni_out.clone());
+
+        MLP { ins: ins, outs: outs, layers: layers, uni_out: uni_out, top_sort: top_sort }
     }
     fn update_weights(&self) {
         for l in self.layers.iter() { 
@@ -350,24 +354,19 @@ impl MLP {
         for (i,x) in self.ins.iter().zip(xs.iter()) { 
             i.borrow_mut().data = *x;
         }
-        // Run forward pass on all outputs
-        for out in self.outs.iter() { 
-            forward(out.clone());
-        }
+        forward(&self.top_sort)
     }
     fn backward(&self) { 
-        for out in self.outs.iter() { 
-            backward(out.clone());
-        }
+        backward(self.uni_out.clone(), &self.top_sort)
     }
 }
 
 fn main() {
 
-    let mlp = MLP::new(vec![4,10,1]);
+    let mlp = MLP::new(vec![10,1000,10,10,5]);
 
-    for _ in 0..10 {
-        mlp.forward(&vec![1.0, 1.0, 1.0, 1.0]);
+    for _ in 0..1000 {
+        mlp.forward(&vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]);
         println!("{:?}", mlp.outs[0].clone().borrow().data);
 
         mlp.backward();
