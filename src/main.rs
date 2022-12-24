@@ -6,7 +6,7 @@ use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::ops::Deref;
 use rand::Rng;
-use std::ops::{Add,Mul};
+use std::ops::{Add,Sub,Mul};
 use std::clone::Clone;
 use std::iter::Sum;
 use std::fmt;
@@ -129,6 +129,13 @@ impl Mul for RefValue {
                 children: vec![self.clone(), other.clone()]
             }
         )))
+    }
+}
+impl Sub for RefValue {
+    type Output = RefValue;
+
+    fn sub(self, other: RefValue) -> RefValue {
+        return self + Value::new(-1.0) * other; 
     }
 }
 fn relu(a: RefValue) -> RefValue { 
