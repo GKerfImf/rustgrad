@@ -387,20 +387,87 @@ impl MLP {
         }
         forward(&self.top_sort)
     }
+    fn eval(&self, xs: &Vec<f64>) -> Vec<f64> { 
+        self.forward(xs);
+        return self.outs.iter().map( |rv| rv.borrow().data ).collect()
+    }
+
     fn backward(&self) { 
         backward(self.uni_out.clone(), &self.top_sort)
     }
 }
 
-fn main() {
+#[derive(Debug)]
+struct Loss {
+    ins: Vec<RefValue>,         // Input variables
 
-    let mlp = MLP::new(vec![10,1000,10,10,5]);
+    mlp_outs: Vec<RefValue>,    // 
+    exp_outs: Vec<RefValue>,    // 
+    loss: RefValue,             //
 
-    for _ in 0..1000 {
-        mlp.forward(&vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]);
-        println!("{:?}", mlp.outs[0].clone().borrow().data);
+    top_sort: Vec<RefValue>     //
+}
+impl Loss {
+    // TODO: implement batching
+    // TODO: implement regularization
 
-        mlp.backward();
+    fn new(mlp: &MLP) -> Loss { 
+        let ins = mlp.ins.clone();
+
+        let mlp_outs: Vec<RefValue> = mlp.outs.clone();
+        let mut exp_outs: Vec<RefValue> = Vec::with_capacity(mlp.outs.len());
+        for _ in 0..mlp.outs.len() {
+            exp_outs.push(Value::new(0.0));
+        }
+
+        let loss = mlp_outs.iter().zip(exp_outs.iter())
+            .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
+            .sum::<RefValue>();
+
+        let top_sort = top_sort(loss.clone());
+    
+        Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss, top_sort: top_sort }
+    }
+
+    fn train(&self, mlp: &MLP, xs: &Vec<f64>, ys: &Vec<f64>) { 
+        if xs.len() != self.ins.len() { 
+            panic!("Number of inputs does not match!")
+        }
+        if ys.len() != self.exp_outs.len() { 
+            panic!("Number of outputs does not match!")
+        }
+
+        // Update input variables
+        for (i,x) in self.ins.iter().zip(xs.iter()) { 
+            i.borrow_mut().data = *x;
+        }
+        // Update output variables
+        for (o,y) in self.exp_outs.iter().zip(ys.iter()) { 
+            o.borrow_mut().data = *y;
+        }
+        forward(&self.top_sort);
+        backward(self.loss.clone(), &self.top_sort);
         mlp.update_weights();
     }
+}
+
+
+fn main() {
+
+    let mlp = MLP::new(vec![2,4,1]);
+    let loss = Loss::new(&mlp);
+
+    let mut acc = 100.0;
+    while acc > 0.01 {
+        let mut temp = vec![0.0,0.0];
+        loss.train(&mlp, &vec![2.0, 2.0], &vec![1.0]);
+        temp[0] = loss.loss.clone().borrow().data;
+        loss.train(&mlp, &vec![-1.0, 3.0], &vec![4.0]);
+        temp[1] = loss.loss.clone().borrow().data;
+        
+        acc = temp.iter().sum();
+        println!("{:?} {}", temp, acc);
+    }
+    println!("{:?}", mlp.eval(&vec![2.0, 2.0]));    // ==> [1.0711436410627702]
+    println!("{:?}", mlp.eval(&vec![-1.0, 3.0]));   // ==> [3.999999460143359]
 }
