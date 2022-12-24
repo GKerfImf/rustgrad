@@ -36,7 +36,8 @@ enum Op {
     Leaf,
     Add,
     Mul,
-    ReLu
+    ReLu,
+    Tanh
 }
 impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -44,7 +45,8 @@ impl fmt::Display for Op {
             Op::Leaf => { write!(f, "") }
             Op::Add => { write!(f, "+") }
             Op::Mul => { write!(f, "*") }
-            Op::ReLu => { write!(f, "RL") }
+            Op::ReLu => { write!(f, "ReLu") }
+            Op::Tanh => { write!(f, "Tanh") }
         }   
     }
 }
@@ -143,6 +145,20 @@ fn relu(a: RefValue) -> RefValue {
         }
     )))
 }
+fn tanh(a: RefValue) -> RefValue { 
+    // log!("New [Tanh] node ID={}", NEXT_ID.load(Ordering::Relaxed));
+    // log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), a.borrow().id);
+    
+    return RefValue(Rc::new(RefCell::new(        
+        Value { 
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: a.borrow().data.tanh(),
+            grad: 0.0,
+            op: Op::Tanh,
+            children: vec![a.clone()]
+        }
+    )))
+}
 
 fn forwprop_node(value: RefValue) {
     let op = value.borrow().op;
@@ -167,6 +183,10 @@ fn forwprop_node(value: RefValue) {
             let data = value.borrow().children[0].borrow().data;
             value.borrow_mut().data = if data < 0.0 { 0.0 } else { data }
         }
+        Op::Tanh => {
+            let data = value.borrow().children[0].borrow().data;
+            value.borrow_mut().data = data.tanh();
+        }
     }
 }
 fn backprop_node(value: RefValue) {
@@ -187,6 +207,10 @@ fn backprop_node(value: RefValue) {
         Op::ReLu => { 
             let grad = value.borrow().grad;
             value.borrow().children[0].borrow_mut().grad += if grad > 0.0 { grad } else { 0.0 };
+        }
+        Op::Tanh => {
+            let grad = value.borrow().grad;
+            value.borrow().children[0].borrow_mut().grad += 1.0 - grad.tanh().powi(2);
         }
     }
 }
@@ -237,7 +261,7 @@ struct Neuron {
 
     w: Vec<RefValue>,       // Weight variables
     b: RefValue,            // Bias variable
-    nlin: bool              // Apply ReLU (true/false)
+    nlin: bool              // Apply non-linearity (true/false)
 }
 impl Sum<RefValue> for RefValue {
     fn sum<I>(iter: I) -> Self
@@ -267,8 +291,8 @@ impl Neuron {
             .map( |(i,w)| i.clone() * w.clone() )
             .sum::<RefValue>() + bias.clone();
 
-        // If [nlin = true], add ReLu non-linearity
-        let out = if nlin { relu(act) } else { act };
+        // If [nlin = true], add Tanh non-linearity
+        let out = if nlin { tanh(act) } else { act };
 
         Neuron { 
             ins: ins, out: out, 
