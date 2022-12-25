@@ -6,6 +6,7 @@ use std::ops::Deref;
 use std::ops::{Add,Sub,Mul};
 use std::clone::Clone;
 use std::fmt;
+use std::iter::Sum;
 
 // ------------------------------------------------
 // https://stackoverflow.com/a/57955092/8125485
@@ -134,6 +135,19 @@ impl Sub for RefValue {
         return self + Value::new(-1.0) * other; 
     }
 }
+impl Sum<RefValue> for RefValue {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = RefValue>,
+    {
+        let mut result = Value::new(0.0);
+        for v in iter {
+            result = result + v; // TODO: [_ = _ + _] --> [_ += _]
+        }
+        result
+    }
+}
+
 pub fn relu(a: RefValue) -> RefValue { 
     // log!("New [ReLu] node ID={}", NEXT_ID.load(Ordering::Relaxed));
     // log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), a.borrow().id);

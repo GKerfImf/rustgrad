@@ -13,18 +13,7 @@ pub struct Neuron {
     b: RefValue,            // Bias variable
     nlin: bool              // Apply non-linearity (true/false)
 }
-impl Sum<RefValue> for RefValue {
-    fn sum<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = RefValue>,
-    {
-        let mut result = Value::new(0.0);
-        for v in iter {
-            result = result + v; // TODO: [_ = _ + _] --> [_ += _]
-        }
-        result
-    }
-}
+
 impl Neuron { 
     pub fn new(ins: Vec<RefValue>, ws: Vec<f64>, b: f64, nlin: bool) -> Neuron { 
         if ins.len() != ws.len() { 
