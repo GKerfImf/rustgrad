@@ -26,17 +26,17 @@ impl Sum<RefValue> for RefValue {
     }
 }
 impl Neuron { 
-    pub fn new(ins: Vec<RefValue>, nlin: bool) -> Neuron { 
-        let mut rng = rand::thread_rng();
+    pub fn new(ins: Vec<RefValue>, ws: Vec<f64>, b: f64, nlin: bool) -> Neuron { 
+        if ins.len() != ws.len() { 
+            panic!("Number of inputs does not match the number of weights!")
+        }
 
         // Create a vector of weights and a bias variable
-        let mut weights: Vec<RefValue> = Vec::with_capacity(ins.len() as usize);
-        for _ in 0..ins.len() {
-            // weights.push(Value::new(0.0));
-            // weights.push(Value::new(1.0));
-            weights.push(Value::new(2.0* rng.gen::<f64>() - 1.0));
+        let mut weights: Vec<RefValue> = Vec::with_capacity(ws.len());
+        for i in 0..ws.len() {
+            weights.push(Value::new(ws[i]));
         }
-        let bias: RefValue = Value::new(0.0);
+        let bias: RefValue = Value::new(b);
 
         // [act = ins * weights + bias]
         let act = ins.iter().zip(weights.iter())
@@ -51,6 +51,18 @@ impl Neuron {
             w: weights, b: bias, nlin: nlin       
         }
     }
+
+    pub fn with_rand_weights(ins: Vec<RefValue>, nlin: bool) -> Neuron {
+        let mut rng = rand::thread_rng();
+        let len = ins.len();
+        return Neuron::new(
+            ins, 
+            (0..len).map( |_| 2.0 * rng.gen::<f64>() - 1.0 ).collect::<Vec<f64>>(),
+            2.0 * rng.gen::<f64>() - 1.0,
+            nlin
+        )
+    }
+
     
     pub fn get_weights(&self) -> Vec<f64> { 
         return self.w.iter().map( |rv| rv.get_data() ).collect::<Vec<f64>>()
@@ -82,7 +94,7 @@ impl Layer {
         let mut outs: Vec<RefValue> = Vec::with_capacity(nout as usize);
 
         for _ in 0..nout {
-            let neuron = Neuron::new(ins.clone(), nlin);
+            let neuron = Neuron::with_rand_weights(ins.clone(), nlin);
             outs.push(neuron.out.clone());
             neurons.push(neuron);
         }
