@@ -36,8 +36,8 @@ impl Neuron {
             .sum::<RefValue>() + bias.clone();
 
         // If [nlin = true], add Tanh non-linearity
-        let out = if nlin { tanh(act) } else { act };
-        // let out = if nlin { relu(act) } else { act };
+        // let out = if nlin { tanh(act) } else { act };
+        let out = if nlin { relu(act) } else { act };
 
         Neuron { 
             ins: ins, out: out, 
