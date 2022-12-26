@@ -8,7 +8,7 @@ mod tests {
     #[cfg(test)]
     mod value { 
         use crate::core::Value;
-        use crate::core::{top_sort, backward, forward, update_weights};
+        use crate::core::{tanh, relu, top_sort, backward, forward, update_weights};
         use rand::Rng;
         use more_asserts as ma;
         use approx;
@@ -131,6 +131,33 @@ mod tests {
             }
             approx::relative_eq!(a.get_data(), b.get_data(), epsilon = 0.001);
         }
+
+        #[test]
+        fn tanh1() {
+            let a = Value::new(0.2);
+            let s = tanh(a.clone() * a.clone() + a.clone());
+            let top_sort = top_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 0.23549574953849797);
+
+            backward(s.clone(), &top_sort);            
+            assert_eq!(a.get_grad(), 1.3223584527290213);
+        }
+
+        #[test]
+        fn relu1() {
+            let a = Value::new(0.2);
+            let s = relu(a.clone() * a.clone() + a.clone());
+            let top_sort = top_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 0.24000000000000002);
+
+            backward(s.clone(), &top_sort);            
+            assert_eq!(a.get_grad(), 1.4);
+        }
+
     }
 
     #[cfg(test)]

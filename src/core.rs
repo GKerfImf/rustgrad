@@ -237,12 +237,14 @@ fn backprop_node(value: RefValue) {
             value.borrow().children[1].borrow_mut().grad += l_data * grad;
         }
         Op::ReLu => { 
+            let data = value.borrow().data;
             let grad = value.borrow().grad;
-            value.borrow().children[0].borrow_mut().grad += if grad > 0.0 { grad } else { 0.0 };
+            value.borrow().children[0].borrow_mut().grad += if data > 0.0 { grad } else { 0.0 };
         }
         Op::Tanh => {
+            let c_data = value.borrow().children[0].borrow().data; 
             let grad = value.borrow().grad;
-            value.borrow().children[0].borrow_mut().grad += 1.0 - grad.tanh().powi(2);
+            value.borrow().children[0].borrow_mut().grad += (1.0 - c_data.tanh().powi(2)) * grad;
         }
     }
 }
