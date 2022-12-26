@@ -29,7 +29,7 @@ macro_rules! log {
 // ------------------------------------------------
 
 #[derive(Debug,PartialEq,Clone,Copy)]
-enum Op {
+pub enum Op {
     Leaf,
     Add,
     Mul,
@@ -177,6 +177,9 @@ pub fn tanh(a: RefValue) -> RefValue {
     )))
 }
 impl RefValue { 
+    pub fn get_type(&self) -> Op { 
+        return self.borrow().op
+    }
     pub fn get_data(&self) -> f64 { 
         return self.borrow().data
     }

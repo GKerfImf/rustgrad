@@ -1,8 +1,9 @@
 use rand::Rng;
 use std::iter::Sum;
+use std::fmt;
 
 use crate::core::{Value, RefValue};
-use crate::core::{tanh, top_sort, backward, forward, update_weights};
+use crate::core::{relu, tanh, top_sort, backward, forward, update_weights};
 
 #[derive(Debug)]
 pub struct Neuron {
@@ -34,6 +35,7 @@ impl Neuron {
 
         // If [nlin = true], add Tanh non-linearity
         let out = if nlin { tanh(act) } else { act };
+        // let out = if nlin { relu(act) } else { act };
 
         Neuron { 
             ins: ins, out: out, 
@@ -51,7 +53,6 @@ impl Neuron {
             nlin
         )
     }
-
     
     pub fn get_weights(&self) -> Vec<f64> { 
         return self.w.iter().map( |rv| rv.get_data() ).collect::<Vec<f64>>()
@@ -151,6 +152,48 @@ impl MLP {
         backward(self.uni_out.clone(), &self.top_sort)
     }
 }
+
+impl fmt::Display for MLP {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        write!(f, "================================================================\n")?;
+        write!(f, "=                         State of MLP                         =\n")?;
+        write!(f, "================================================================\n")?;
+
+        // Print [ins]
+        write!(f, "Inputs:\n")?;
+        for i in self.ins.iter() { 
+            write!(f, " [{val:>8.3}]\n", val=i.get_data())?;
+        }
+        write!(f, "\n")?;
+
+        write!(f, "Weights:\n")?;
+        for l in self.layers.iter() { 
+            for n in 0..l.neurons.len() { 
+                write!(f," [")?;
+                for w in 0..l.neurons[0].w.len() { 
+                    write!(f, "({val:>8.3}, {gra:>8.3})", val=l.neurons[n].w[w].get_data(), gra=l.neurons[n].w[w].get_grad())?;
+                }
+                write!(f,"]")?;
+                write!(f, " + ({val:>8.3}, {gra:>8.3})", val=l.neurons[n].b.get_data(), gra=l.neurons[n].b.get_grad())?;
+                if l.neurons[n].nlin {
+                    write!(f, " --> {} ", l.neurons[n].out.get_type())?;
+                }
+                write!(f, " ==> {} \n", l.neurons[n].out.get_data())?;
+            }
+            write!(f,"\n")?;
+        }
+        write!(f,"\n")?;
+
+        // Print [outs]
+        write!(f, "Outputs:\n")?;
+        for o in self.outs.iter() { 
+            write!(f, " [{name:>8.3}]\n", name=o.get_data())?;
+        }
+        return Ok(())
+    }
+}
+
 
 #[derive(Debug)]
 pub struct Loss {
