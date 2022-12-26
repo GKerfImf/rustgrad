@@ -1,6 +1,8 @@
 use rand::Rng;
-use std::iter::Sum;
 use std::fmt;
+use core::slice::Iter;
+use core::iter::{Empty,Once,Chain,Flatten,FlatMap};
+use std::iter;
 
 use crate::core::{Value, RefValue};
 use crate::core::{relu, tanh, top_sort, backward, forward, update_weights};
@@ -66,6 +68,10 @@ impl Neuron {
         update_weights(&self.w);
         update_weights(&vec![self.b.clone()]);
     }
+
+    fn get_parameters(&self) -> Chain<Iter<RefValue>,Once<&RefValue>> { 
+        return self.w.iter().chain(iter::once(&self.b)) //self.w.iter()
+    }
 }
 
 #[derive(Debug)]
@@ -74,6 +80,7 @@ struct Layer {
     outs: Vec<RefValue>,        // Output variables
     neurons: Vec<Neuron>        // Neurons
 }
+
 
 impl Layer { 
     // [ins]  -- vector of inputs
@@ -94,6 +101,11 @@ impl Layer {
         for n in self.neurons.iter() { 
             n.update_weights()
         }
+    }
+    
+    fn get_parameters(&self) -> Vec<RefValue> {
+        return self.neurons.iter().flat_map( |n| n.get_parameters() )
+                .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
     }
 }
 
@@ -133,6 +145,11 @@ impl MLP {
             l.update_weights()
         }
     }
+    fn get_parameters(&self) -> Vec<RefValue> {
+        return self.layers.iter().flat_map( |l| l.get_parameters() )
+                .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
+    }
+
     fn forward(&self, xs: &Vec<f64>) { 
         if xs.len() != self.ins.len() { 
             panic!("Number of inputs does not match!")
@@ -172,10 +189,10 @@ impl fmt::Display for MLP {
             for n in 0..l.neurons.len() { 
                 write!(f," [")?;
                 for w in 0..l.neurons[0].w.len() { 
-                    write!(f, "({val:>8.3}, {gra:>8.3})", val=l.neurons[n].w[w].get_data(), gra=l.neurons[n].w[w].get_grad())?;
+                    write!(f, "{val:>8.3} ", val=l.neurons[n].w[w].get_data())?;
                 }
                 write!(f,"]")?;
-                write!(f, " + ({val:>8.3}, {gra:>8.3})", val=l.neurons[n].b.get_data(), gra=l.neurons[n].b.get_grad())?;
+                write!(f, " + ({val:>8.3})", val=l.neurons[n].b.get_data())?;
                 if l.neurons[n].nlin {
                     write!(f, " --> {} ", l.neurons[n].out.get_type())?;
                 }
@@ -207,7 +224,6 @@ pub struct Loss {
 }
 impl Loss {
     // TODO: implement batching
-    // TODO: implement regularization
 
     pub fn new(mlp: &MLP) -> Loss { 
         let ins = mlp.ins.clone();
@@ -218,13 +234,13 @@ impl Loss {
             exp_outs.push(Value::new(0.0));
         }
 
-        let loss = mlp_outs.iter().zip(exp_outs.iter())
+        let data_loss = mlp_outs.iter().zip(exp_outs.iter())
             .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
             .sum::<RefValue>();
+        let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
+        let loss = data_loss + Value::new(0.001) * reg_loss; 
 
-        let top_sort = top_sort(loss.clone());
-    
-        Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss, top_sort: top_sort }
+        Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss.clone(), top_sort: top_sort(loss) }
     }
 
     pub fn train(&self, mlp: &MLP, xs: &Vec<f64>, ys: &Vec<f64>) { 
