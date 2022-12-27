@@ -1,46 +1,101 @@
 #![allow(dead_code)]
-// #![allow(unused_imports)]
+#![allow(unused_imports)]
+#![allow(unused_macros)]
+
+use plotly::{Contour, HeatMap, Layout, Plot, Scatter};
+use plotly::common::{ColorScale, ColorScalePalette, Title, Mode, Marker};
+use plotly::common::color::{Color, NamedColor};
+use plotly::contour::Contours;
+use std::f64::consts::PI;
+use rand::Rng;
 
 pub mod core;
 pub mod mlp;
 
-use rand::Rng;
+fn simple_plot() {
+    let mut rng = rand::thread_rng();
 
-fn main() {
+    // Generate examples
+    let n = 100;
+    let mut examples = Vec::<(Vec<f64>, bool)>::new();
+    for _ in 0..n {
+        let x = 5.0 * rng.gen::<f64>() + 10.0;
+        let y = 10.0 * rng.gen::<f64>();
+        examples.push( (vec![x,y], true) );
+    }
+    for _ in 0..n {
+        let x = 5.0 * rng.gen::<f64>() - 10.0;
+        let y = 10.0 * rng.gen::<f64>();
+        examples.push( (vec![x,y], false) );
+    }
 
+    // Train the MLP
     let mlp = mlp::MLP::new(vec![2,4,4,1]);
     let loss = mlp::Loss::new(&mlp);
 
     let mut rng = rand::thread_rng();
-    let f = 100;
-    for i in 0..10*f {
-        
-        if i % f == 0 {
-            println!("{}", &mlp);
-        }
-
-        let mut temp = vec![0.0,0.0,0.0,0.0];
-        if rng.gen::<f64>() < 0.5 { 
-            loss.train(&mlp, &vec![2.0, 2.0], &vec![10.0]);
-            temp[0] = loss.loss.get_data();
-        }
-        if rng.gen::<f64>() < 0.5 { 
-            loss.train(&mlp, &vec![-1.0, 3.0], &vec![4.0]);
-            temp[1] = loss.loss.get_data();
-        }
-        if rng.gen::<f64>() < 0.5 { 
-            loss.train(&mlp, &vec![-10.0, 10.0], &vec![-10.0]);
-            temp[2] = loss.loss.get_data();
-        }       
-        if rng.gen::<f64>() < 0.5 { 
-            loss.train(&mlp, &vec![14.0, -10.0], &vec![-4.0]);
-            temp[3] = loss.loss.get_data();
-        }       
+    for _ in 0..100000 {
+        let i = rng.gen::<usize>() % n*2;
+        let ins = &examples[i].0;
+        let out = if examples[i].1 { vec![10.0] } else { vec![-10.0] };
+        loss.train(&mlp, &ins, &out);    
     }
 
-    println!("{:?}", mlp.eval(&vec![2.0, 2.0])); //     ==> [ 99.227]
-    println!("{:?}", mlp.eval(&vec![-1.0, 3.0])); //    ==> [ 39.491]
-    println!("{:?}", mlp.eval(&vec![-10.0, 10.0])); //  ==> [-98.771]
-    println!("{:?}", mlp.eval(&vec![14.0, -10.0])); //  ==> [-39.191]
+    // Plot stuff 
+    let n = 250;
+    let mut x = Vec::<f64>::new();
+    let mut y = Vec::<f64>::new();
+    let mut z: Vec<Vec<f64>> = Vec::new();
 
+    for index in 0..n {
+        let value = -20.0 + 40.0 * (index as f64) / (n as f64);
+        x.push(value);
+        y.push(value);
+    }
+
+    for xi in 0..n {
+        let mut row = Vec::<f64>::new();
+        for yi in 0..n {
+            let zv = mlp.eval(&vec![x[xi], y[yi]])[0];
+            row.push(zv);
+        }
+        z.push(row);
+    }
+    
+    let trace = Contour::new(x,y,z)
+        .color_scale(ColorScale::Palette(ColorScalePalette::Jet))
+        .auto_contour(false)
+        .contours(Contours::new().start(-3.0).end(3.0));
+
+    let layout = Layout::new().title(Title::new("Customizing Size and Range of Contours"));
+    
+    let mut plot = Plot::new();
+    plot.set_layout(layout);
+    plot.add_trace(trace);
+
+    let scatter_pos = Scatter::new(
+            examples.iter().filter( |cb| cb.1 ).map( |cb| cb.0[0]).collect::<Vec<f64>>(), 
+            examples.iter().filter( |cb| cb.1 ).map( |cb| cb.0[1]).collect::<Vec<f64>>()
+        )
+        .name("Positive Example")
+        .mode(Mode::Markers)
+        .marker(Marker::new().size(10).color(NamedColor::Blue));
+
+    let scatter_neg = Scatter::new(
+            examples.iter().filter( |cb| !cb.1 ).map( |cb| cb.0[0]).collect::<Vec<f64>>(), 
+            examples.iter().filter( |cb| !cb.1 ).map( |cb| cb.0[1]).collect::<Vec<f64>>()
+        )
+        .name("Negative Example")
+        .mode(Mode::Markers)
+        .marker(Marker::new().size(10).color(NamedColor::Red));
+        
+    plot.add_trace(scatter_pos);
+    plot.add_trace(scatter_neg);
+    plot.show();
+    
+    println!("{}", mlp);
+}
+
+fn main() {
+    simple_plot();
 }
