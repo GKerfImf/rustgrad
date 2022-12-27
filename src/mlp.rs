@@ -234,8 +234,11 @@ impl Loss {
             exp_outs.push(Value::new(0.0));
         }
 
+        // let data_loss = mlp_outs.iter().zip(exp_outs.iter())
+        //     .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
+        //     .sum::<RefValue>();
         let data_loss = mlp_outs.iter().zip(exp_outs.iter())
-            .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
+            .map( |(sci,yi)| relu( Value::new(-1.0) * sci.clone() * yi.clone() + Value::new(1.0)) )
             .sum::<RefValue>();
         let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
         let loss = data_loss + Value::new(0.001) * reg_loss; 

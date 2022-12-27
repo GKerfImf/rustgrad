@@ -11,9 +11,6 @@ use std::iter::Sum;
 // ------------------------------------------------
 // https://stackoverflow.com/a/57955092/8125485
 
-// Disable warnings
-#[allow(unused_macros)]
-
 // The debug version
 #[cfg(debug_assertions)]
 macro_rules! log {
@@ -278,7 +275,7 @@ pub fn backward(root: RefValue, nodes: &Vec<RefValue>) {
     }
 }
 pub fn update_weights(variables: &Vec<RefValue>) {
-    let rate = 0.001; 
+    let rate = 0.01; 
 
     for var in variables.iter() {
         let grad = var.borrow_mut().grad;
