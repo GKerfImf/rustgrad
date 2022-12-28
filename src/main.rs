@@ -16,14 +16,15 @@ fn simple_plot() {
     let mut rng = rand::thread_rng();
 
     // Generate examples
-    let n = 100;
+    let n = 1;
     let mut examples = Vec::<(Vec<f64>, bool)>::new();
     for _ in 0..n {
         let x = 5.0 * rng.gen::<f64>() + 10.0;
         let y = 10.0 * rng.gen::<f64>();
         examples.push( (vec![x,y], true) );
     }
-    for _ in 0..n {
+    let m = 0;
+    for _ in 0..m {
         let x = 5.0 * rng.gen::<f64>() - 10.0;
         let y = 10.0 * rng.gen::<f64>();
         examples.push( (vec![x,y], false) );
@@ -34,11 +35,11 @@ fn simple_plot() {
     let loss = mlp::Loss::new(&mlp);
 
     let mut rng = rand::thread_rng();
-    for _ in 0..100000 {
-        let i = rng.gen::<usize>() % n*2;
-        let ins = &examples[i].0;
-        let out = if examples[i].1 { vec![10.0] } else { vec![-10.0] };
         loss.train(&mlp, &ins, &out);    
+    for i in 0..100000 {
+        let ex = rng.gen::<usize>() % (n + m);
+        let ins = &examples[ex].0;
+        let out = if examples[ex].1 { vec![10.0] } else { vec![-10.0] };
     }
 
     // Plot stuff 
