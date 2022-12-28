@@ -186,62 +186,58 @@ impl RefValue {
     pub fn get_grad(&self) -> f64 { 
         return self.borrow().grad
     }
-}
 
-
-fn forwprop_node(value: RefValue) {
-    let op = value.borrow().op;
-    value.borrow_mut().grad = 0.0;
-
-    match op { 
-        Op::Leaf => { 
-        }
-        Op::Add => {
-            let l_data = value.borrow().children[0].borrow().data; 
-            let r_data = value.borrow().children[1].borrow().data; 
-            
-            value.borrow_mut().data = l_data + r_data;
-        }
-        Op::Mul => {
-            let l_data = value.borrow().children[0].borrow().data; 
-            let r_data = value.borrow().children[1].borrow().data; 
-            
-            value.borrow_mut().data = l_data * r_data;
-        }
-        Op::ReLu => { 
-            let data = value.borrow().children[0].borrow().data;
-            value.borrow_mut().data = if data < 0.0 { 0.0 } else { data }
-        }
-        Op::Tanh => {
-            let data = value.borrow().children[0].borrow().data;
-            value.borrow_mut().data = data.tanh();
+    fn evaluate_forward(&self) {
+        let op = self.borrow().op;
+        self.borrow_mut().grad = 0.0;
+    
+        match op { 
+            Op::Leaf => { }
+            Op::Add => {
+                let l_data = self.borrow().children[0].borrow().data; 
+                let r_data = self.borrow().children[1].borrow().data; 
+                self.borrow_mut().data = l_data + r_data;
+            }
+            Op::Mul => {
+                let l_data = self.borrow().children[0].borrow().data; 
+                let r_data = self.borrow().children[1].borrow().data; 
+                self.borrow_mut().data = l_data * r_data;
+            }
+            Op::ReLu => { 
+                let data = self.borrow().children[0].borrow().data;
+                self.borrow_mut().data = if data < 0.0 { 0.0 } else { data }
+            }
+            Op::Tanh => {
+                let data = self.borrow().children[0].borrow().data;
+                self.borrow_mut().data = data.tanh();
+            }
         }
     }
-}
-fn backprop_node(value: RefValue) {
-    match value.borrow().op { 
-        Op::Leaf => { }
-        Op::Add => {
-            let grad = value.borrow().grad; 
-            value.borrow().children[0].borrow_mut().grad += grad;
-            value.borrow().children[1].borrow_mut().grad += grad;
-        }
-        Op::Mul => {
-            let grad = value.borrow().grad;
-            let l_data = value.borrow().children[0].borrow().data; 
-            let r_data = value.borrow().children[1].borrow().data; 
-            value.borrow().children[0].borrow_mut().grad += r_data * grad;
-            value.borrow().children[1].borrow_mut().grad += l_data * grad;
-        }
-        Op::ReLu => { 
-            let data = value.borrow().data;
-            let grad = value.borrow().grad;
-            value.borrow().children[0].borrow_mut().grad += if data > 0.0 { grad } else { 0.0 };
-        }
-        Op::Tanh => {
-            let c_data = value.borrow().children[0].borrow().data; 
-            let grad = value.borrow().grad;
-            value.borrow().children[0].borrow_mut().grad += (1.0 - c_data.tanh().powi(2)) * grad;
+    fn evaluate_backward(&self) {
+        match self.borrow().op { 
+            Op::Leaf => { }
+            Op::Add => {
+                let grad = self.borrow().grad; 
+                self.borrow().children[0].borrow_mut().grad += grad;
+                self.borrow().children[1].borrow_mut().grad += grad;
+            }
+            Op::Mul => {
+                let grad = self.borrow().grad;
+                let l_data = self.borrow().children[0].borrow().data; 
+                let r_data = self.borrow().children[1].borrow().data; 
+                self.borrow().children[0].borrow_mut().grad += r_data * grad;
+                self.borrow().children[1].borrow_mut().grad += l_data * grad;
+            }
+            Op::ReLu => { 
+                let data = self.borrow().data;
+                let grad = self.borrow().grad;
+                self.borrow().children[0].borrow_mut().grad += if data > 0.0 { grad } else { 0.0 };
+            }
+            Op::Tanh => {
+                let c_data = self.borrow().children[0].borrow().data; 
+                let grad = self.borrow().grad;
+                self.borrow().children[0].borrow_mut().grad += (1.0 - c_data.tanh().powi(2)) * grad;
+            }
         }
     }
 }
@@ -265,13 +261,13 @@ pub fn top_sort(root: RefValue) -> Vec<RefValue>{
 }
 pub fn forward(nodes: &Vec<RefValue>) { 
     for node in nodes.iter() { 
-        forwprop_node(node.clone());
+        node.evaluate_forward();
     }
 }
 pub fn backward(root: RefValue, nodes: &Vec<RefValue>) { 
     root.borrow_mut().grad = 1.0;
     for node in nodes.iter().rev() {
-        backprop_node(node.clone());
+        node.evaluate_backward();
     }
 }
 pub fn update_weights(variables: &Vec<RefValue>, rate: f64) {
