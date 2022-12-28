@@ -35,11 +35,11 @@ fn simple_plot() {
     let loss = mlp::Loss::new(&mlp);
 
     let mut rng = rand::thread_rng();
-        loss.train(&mlp, &ins, &out);    
     for i in 0..100000 {
         let ex = rng.gen::<usize>() % (n + m);
         let ins = &examples[ex].0;
         let out = if examples[ex].1 { vec![10.0] } else { vec![-10.0] };
+        loss.train(&mlp, &ins, &out, 0.01);
     }
 
     // Plot stuff 

@@ -274,9 +274,7 @@ pub fn backward(root: RefValue, nodes: &Vec<RefValue>) {
         backprop_node(node.clone());
     }
 }
-pub fn update_weights(variables: &Vec<RefValue>) {
-    let rate = 0.01; 
-
+pub fn update_weights(variables: &Vec<RefValue>, rate: f64) {
     for var in variables.iter() {
         let grad = var.borrow_mut().grad;
         var.borrow_mut().data -= rate * grad;

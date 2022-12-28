@@ -64,9 +64,9 @@ impl Neuron {
         return self.b.get_data()
     }
 
-    fn update_weights(&self) { 
-        update_weights(&self.w);
-        update_weights(&vec![self.b.clone()]);
+    fn update_weights(&self, rate: f64) { 
+        update_weights(&self.w, rate);
+        update_weights(&vec![self.b.clone()], rate);
     }
 
     fn get_parameters(&self) -> Chain<Iter<RefValue>,Once<&RefValue>> { 
@@ -97,9 +97,9 @@ impl Layer {
         }
         Layer { ins: ins, outs: outs, neurons: neurons }
     }
-    fn update_weights(&self) {
+    fn update_weights(&self, rate: f64) {
         for n in self.neurons.iter() { 
-            n.update_weights()
+            n.update_weights(rate)
         }
     }
     
@@ -140,9 +140,9 @@ impl MLP {
 
         MLP { ins: ins, outs: outs, layers: layers, uni_out: uni_out, top_sort: top_sort }
     }
-    fn update_weights(&self) {
+    fn update_weights(&self, rate: f64) {
         for l in self.layers.iter() { 
-            l.update_weights()
+            l.update_weights(rate)
         }
     }
     fn get_parameters(&self) -> Vec<RefValue> {
@@ -246,7 +246,7 @@ impl Loss {
         Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss.clone(), top_sort: top_sort(loss) }
     }
 
-    pub fn train(&self, mlp: &MLP, xs: &Vec<f64>, ys: &Vec<f64>) { 
+    pub fn train(&self, mlp: &MLP, xs: &Vec<f64>, ys: &Vec<f64>, rate: f64) { 
         if xs.len() != self.ins.len() { 
             panic!("Number of inputs does not match!")
         }
@@ -264,6 +264,6 @@ impl Loss {
         }
         forward(&self.top_sort);
         backward(self.loss.clone(), &self.top_sort);
-        mlp.update_weights();
+        mlp.update_weights(rate);
     }
 }
