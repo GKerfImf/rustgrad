@@ -10,7 +10,7 @@ use crate::core::{relu, tanh, top_sort, backward, forward, update_weights};
 #[derive(Debug)]
 pub struct Neuron {
     ins: Vec<RefValue>,     // Input variables          // TODO: should be [&Vec<RefValue>]
-    pub out: RefValue,      // Output variable
+    out: RefValue,          // Output variable
 
     w: Vec<RefValue>,       // Weight variables
     b: RefValue,            // Bias variable
