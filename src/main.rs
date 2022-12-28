@@ -57,7 +57,7 @@ fn simple_plot() {
     for xi in 0..n {
         let mut row = Vec::<f64>::new();
         for yi in 0..n {
-            let zv = mlp.eval(&vec![x[xi], y[yi]])[0];
+            let zv = mlp.eval(&vec![y[yi], x[xi]])[0];
             row.push(zv);
         }
         z.push(row);
