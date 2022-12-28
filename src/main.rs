@@ -3,6 +3,7 @@
 #![allow(unused_macros)]
 
 use plotly::{Contour, HeatMap, Layout, Plot, Scatter};
+use plotly::plot::ImageFormat;
 use plotly::common::{ColorScale, ColorScalePalette, Title, Mode, Marker};
 use plotly::common::color::{Color, NamedColor};
 use plotly::contour::Contours;
@@ -14,32 +15,48 @@ pub mod mlp;
 
 fn simple_plot() {
     let mut rng = rand::thread_rng();
+    let mut generate_circle = |x_sh: f64, y_sh: f64, r_sm: f64, r_lr: f64| { 
+        loop { 
+            let r = r_sm + (r_lr - r_sm) * rng.gen::<f64>().sqrt();
+            let theta = 2.0 * PI * rng.gen::<f64>();
+            return (x_sh + r * theta.cos(), y_sh + r * theta.sin())
+        }
+    };
 
     // Generate examples
-    let n = 1;
+    let n1 = 50;
     let mut examples = Vec::<(Vec<f64>, bool)>::new();
-    for _ in 0..n {
-        let x = 5.0 * rng.gen::<f64>() + 10.0;
-        let y = 10.0 * rng.gen::<f64>();
+    for _ in 0..n1 {
+        let (x,y) = generate_circle(7.0, 0.0, 6.0, 6.0);
         examples.push( (vec![x,y], true) );
     }
-    let m = 0;
-    for _ in 0..m {
-        let x = 5.0 * rng.gen::<f64>() - 10.0;
-        let y = 10.0 * rng.gen::<f64>();
+    let n2 = 50;
+    for _ in 0..n2 {
+        let (x,y) = generate_circle(-7.0, 0.0, 3.0, 3.0);
+        examples.push( (vec![x,y], true) );
+    }
+    let m1 = 50;
+    for _ in 0..m1 {
+        let (x,y) = generate_circle(7.0, 0.0, 3.0, 3.0);
+        examples.push( (vec![x,y], false) );
+    }
+    let m2 = 50;
+    for _ in 0..m2 {
+        let (x,y) = generate_circle(-7.0, 0.0, 6.0, 6.0);
         examples.push( (vec![x,y], false) );
     }
 
     // Train the MLP
-    let mlp = mlp::MLP::new(vec![2,4,4,1]);
+    let mlp = mlp::MLP::new(vec![2,10,10,1]);
     let loss = mlp::Loss::new(&mlp);
 
-    let mut rng = rand::thread_rng();
-    for i in 0..100000 {
-        let ex = rng.gen::<usize>() % (n + m);
-        let ins = &examples[ex].0;
-        let out = if examples[ex].1 { vec![10.0] } else { vec![-10.0] };
-        loss.train(&mlp, &ins, &out, 0.01);
+    let iterations = 1000;
+    for i in 0..iterations {
+        for ex in 0..(n1 + n2 + m1 + m2) { 
+            let ins = &examples[ex].0;
+            let out = if examples[ex].1 { vec![-10.0] } else { vec![10.0] };
+            loss.train(&mlp, &ins, &out, 0.0005); 
+        }
     }
 
     // Plot stuff 
@@ -62,16 +79,13 @@ fn simple_plot() {
         }
         z.push(row);
     }
+
+    let mut plot = Plot::new();
     
     let trace = Contour::new(x,y,z)
-        .color_scale(ColorScale::Palette(ColorScalePalette::Jet))
         .auto_contour(false)
-        .contours(Contours::new().start(-3.0).end(3.0));
-
-    let layout = Layout::new().title(Title::new("Customizing Size and Range of Contours"));
-    
-    let mut plot = Plot::new();
-    plot.set_layout(layout);
+        .show_scale(false)
+        .contours(Contours::new().start(-0.1).end(0.1));
     plot.add_trace(trace);
 
     let scatter_pos = Scatter::new(
@@ -81,6 +95,7 @@ fn simple_plot() {
         .name("Positive Example")
         .mode(Mode::Markers)
         .marker(Marker::new().size(10).color(NamedColor::Blue));
+    plot.add_trace(scatter_pos);
 
     let scatter_neg = Scatter::new(
             examples.iter().filter( |cb| !cb.1 ).map( |cb| cb.0[0]).collect::<Vec<f64>>(), 
@@ -89,11 +104,9 @@ fn simple_plot() {
         .name("Negative Example")
         .mode(Mode::Markers)
         .marker(Marker::new().size(10).color(NamedColor::Red));
-        
-    plot.add_trace(scatter_pos);
     plot.add_trace(scatter_neg);
-    plot.show();
-    
+
+    plot.show_image(ImageFormat::PNG, 1024, 680);    
     println!("{}", mlp);
 }
 
