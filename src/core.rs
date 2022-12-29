@@ -20,6 +20,7 @@ pub struct Value {
     id: u64,
     data: f64,
     grad: f64,
+    batch_grad: f64,
     op: Op,
     children: Vec<RefValue> 
 }
@@ -57,6 +58,7 @@ impl Add for RefValue {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data + other.borrow().data,
                 grad: 0.0,
+                batch_grad: 0.0,
                 op: Op::Add,
                 children: vec![self.clone(), other.clone()]
             }
@@ -72,6 +74,7 @@ impl Mul for RefValue {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data * other.borrow().data,
                 grad: 0.0,
+                batch_grad: 0.0,
                 op: Op::Mul,
                 children: vec![self.clone(), other.clone()]
             }
@@ -111,6 +114,9 @@ impl RefValue {
     pub fn get_grad(&self) -> f64 { 
         return self.borrow().grad
     }
+    pub fn get_batch_grad(&self) -> f64 { 
+        return self.borrow().batch_grad
+    }
 
     pub fn relu(&self) -> RefValue { 
         return RefValue(Rc::new(RefCell::new(        
@@ -118,6 +124,7 @@ impl RefValue {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: if self.borrow().data < 0.0 { 0.0 } else { self.borrow().data },
                 grad: 0.0,
+                batch_grad: 0.0,
                 op: Op::ReLu,
                 children: vec![self.clone()]
             }
@@ -130,15 +137,29 @@ impl RefValue {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.tanh(),
                 grad: 0.0,
+                batch_grad: 0.0,
                 op: Op::Tanh,
                 children: vec![self.clone()]
             }
         )))
     }
 
+    fn update_grads(&self, grad: f64) {
+        self.borrow_mut().grad += grad;
+        self.borrow_mut().batch_grad += grad;
+    }
+
+    fn reset_grad(&self) {
+        self.borrow_mut().grad = 0.0
+    }
+
+    fn reset_batch_grad(&self) { 
+        self.borrow_mut().batch_grad = 0.0
+    }
+
     fn evaluate_forward(&self) {
         let op = self.borrow().op;
-        self.borrow_mut().grad = 0.0;
+        self.reset_grad();
     
         match op { 
             Op::Leaf => { }
@@ -168,29 +189,31 @@ impl RefValue {
             Op::Leaf => { }
             Op::Add => {
                 let grad = self.borrow().grad; 
-                self.borrow().children[0].borrow_mut().grad += grad;
-                self.borrow().children[1].borrow_mut().grad += grad;
+                self.borrow().children[0].update_grads(grad);
+                self.borrow().children[1].update_grads(grad);
             }
             Op::Mul => {
                 let grad = self.borrow().grad;
                 let l_data = self.borrow().children[0].borrow().data; 
                 let r_data = self.borrow().children[1].borrow().data; 
-                self.borrow().children[0].borrow_mut().grad += r_data * grad;
-                self.borrow().children[1].borrow_mut().grad += l_data * grad;
+                self.borrow().children[0].update_grads(r_data * grad);
+                self.borrow().children[1].update_grads(l_data * grad);
             }
             Op::ReLu => { 
                 let data = self.borrow().data;
                 let grad = self.borrow().grad;
-                self.borrow().children[0].borrow_mut().grad += if data > 0.0 { grad } else { 0.0 };
+                self.borrow().children[0].update_grads(if data > 0.0 { grad } else { 0.0 });
             }
             Op::Tanh => {
                 let c_data = self.borrow().children[0].borrow().data; 
                 let grad = self.borrow().grad;
-                self.borrow().children[0].borrow_mut().grad += (1.0 - c_data.tanh().powi(2)) * grad;
+                self.borrow().children[0].update_grads((1.0 - c_data.tanh().powi(2)) * grad);
             }
         }
     }
 }
+
+// ------------------------------------------------
 
 pub fn top_sort(root: RefValue) -> Vec<RefValue>{
     let mut result = vec![];
@@ -209,20 +232,25 @@ pub fn top_sort(root: RefValue) -> Vec<RefValue>{
     dfs(&mut result, &mut visited, root);
     return result
 }
+
 pub fn forward(nodes: &Vec<RefValue>) { 
     for node in nodes.iter() { 
         node.evaluate_forward();
     }
 }
+
 pub fn backward(root: RefValue, nodes: &Vec<RefValue>) { 
     root.borrow_mut().grad = 1.0;
     for node in nodes.iter().rev() {
         node.evaluate_backward();
     }
 }
+
 pub fn update_weights(variables: &Vec<RefValue>, rate: f64) {
     for var in variables.iter() {
-        let grad = var.borrow_mut().grad;
-        var.borrow_mut().data -= rate * grad;
+        let batch_grad = var.borrow_mut().batch_grad;
+        var.borrow_mut().data -= rate * batch_grad;
+        var.reset_grad();
+        var.reset_batch_grad();
     }
 }

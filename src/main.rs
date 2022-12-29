@@ -24,43 +24,60 @@ fn simple_plot() {
         }
     };
 
-    // Generate examples
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+    //                                 Generate Input                                  //
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+    let mut x_train = Vec::<Vec<f64>>::new();
+    let mut y_train = Vec::<Vec<f64>>::new();
+
     let n1 = 50;
-    let mut examples = Vec::<(Vec<f64>, bool)>::new();
     for _ in 0..n1 {
         let (x,y) = generate_circle(7.0, 0.0, 6.0, 6.0);
-        examples.push( (vec![x,y], true) );
+        x_train.push(vec![x,y]);
+        y_train.push(vec![-1.0]);
     }
     let n2 = 50;
     for _ in 0..n2 {
         let (x,y) = generate_circle(-7.0, 0.0, 3.0, 3.0);
-        examples.push( (vec![x,y], true) );
+        x_train.push(vec![x,y]);
+        y_train.push(vec![-1.0]);
     }
     let m1 = 50;
     for _ in 0..m1 {
         let (x,y) = generate_circle(7.0, 0.0, 3.0, 3.0);
-        examples.push( (vec![x,y], false) );
+        x_train.push(vec![x,y]);
+        y_train.push(vec![1.0]);
     }
     let m2 = 50;
     for _ in 0..m2 {
         let (x,y) = generate_circle(-7.0, 0.0, 6.0, 6.0);
-        examples.push( (vec![x,y], false) );
+        x_train.push(vec![x,y]);
+        y_train.push(vec![1.0]);
     }
-
-    // Train the MLP
-    let mlp = mlp::MLP::new(vec![2,10,10,1]);
+   
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+    //                                  Train the MLP                                  //
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+    let mlp = mlp::MLP::new(vec![2,16,16,1]);
     let loss = mlp::Loss::new(&mlp);
 
-    let iterations = 1000;
-    for i in 0..iterations {
-        for ex in 0..(n1 + n2 + m1 + m2) { 
-            let ins = &examples[ex].0;
-            let out = if examples[ex].1 { vec![-10.0] } else { vec![10.0] };
-            loss.train(&mlp, &ins, &out, 0.0005); 
-        }
+    // let iterations = 2000;
+    // for _ in 0..200 {
+    let mut acc = 0.0;
+    while acc < 0.99 {
+        loss.batch_train(&mlp, &x_train, &y_train, 0.01); 
+    
+        acc = x_train.iter().zip(y_train.iter())
+            .map( |(xs,ys)|  mlp.eval(&vec![xs[0], xs[1]])[0] * ys[0] )
+            .filter( |y| y >= &0.0 )
+            .count() as f64 / ((n1 + n2 + m1 + m2) as f64);
+        print!("{} ", acc);
     }
+    println!("");
 
-    // Plot stuff 
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+    //                                   Plot Stuff                                    //
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     let n = 250;
     let mut x = Vec::<f64>::new();
     let mut y = Vec::<f64>::new();
@@ -90,8 +107,8 @@ fn simple_plot() {
     plot.add_trace(trace);
 
     let scatter_pos = Scatter::new(
-            examples.iter().filter( |cb| cb.1 ).map( |cb| cb.0[0]).collect::<Vec<f64>>(), 
-            examples.iter().filter( |cb| cb.1 ).map( |cb| cb.0[1]).collect::<Vec<f64>>()
+            x_train.iter().zip(y_train.iter()).filter( |(_,y)| y[0] < 0.0 ).map( |(x,_)| x[0] ).collect::<Vec<f64>>(),
+            x_train.iter().zip(y_train.iter()).filter( |(_,y)| y[0] < 0.0 ).map( |(x,_)| x[1] ).collect::<Vec<f64>>()
         )
         .name("Positive Example")
         .mode(Mode::Markers)
@@ -99,8 +116,8 @@ fn simple_plot() {
     plot.add_trace(scatter_pos);
 
     let scatter_neg = Scatter::new(
-            examples.iter().filter( |cb| !cb.1 ).map( |cb| cb.0[0]).collect::<Vec<f64>>(), 
-            examples.iter().filter( |cb| !cb.1 ).map( |cb| cb.0[1]).collect::<Vec<f64>>()
+            x_train.iter().zip(y_train.iter()).filter( |(_,y)| y[0] > 0.0 ).map( |(x,_)| x[0] ).collect::<Vec<f64>>(),
+            x_train.iter().zip(y_train.iter()).filter( |(_,y)| y[0] > 0.0 ).map( |(x,_)| x[1] ).collect::<Vec<f64>>()
         )
         .name("Negative Example")
         .mode(Mode::Markers)

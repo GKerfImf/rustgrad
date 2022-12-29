@@ -189,10 +189,12 @@ impl fmt::Display for MLP {
             for n in 0..l.neurons.len() { 
                 write!(f," [")?;
                 for w in 0..l.neurons[0].w.len() { 
+                    // write!(f, "{val:>8.3} [{grad:>8.3}, {bgrad:>8.3}]", val=l.neurons[n].w[w].get_data(),grad=l.neurons[n].w[w].get_grad(),bgrad=l.neurons[n].w[w].get_batch_grad())?;
                     write!(f, "{val:>8.3} ", val=l.neurons[n].w[w].get_data())?;
                 }
                 write!(f,"]")?;
-                write!(f, " + ({val:>8.3})", val=l.neurons[n].b.get_data())?;
+                // write!(f, " + ({val:>8.3}) [{grad:>8.3}, {bgrad:>8.3}]", val=l.neurons[n].b.get_data(), grad=l.neurons[n].b.get_grad(),bgrad=l.neurons[n].b.get_batch_grad())?;
+                write!(f, " + ({val:>8.3}) ", val=l.neurons[n].b.get_data())?;
                 if l.neurons[n].nlin {
                     write!(f, " --> {} ", l.neurons[n].out.get_type())?;
                 }
@@ -223,8 +225,6 @@ pub struct Loss {
     top_sort: Vec<RefValue>     //
 }
 impl Loss {
-    // TODO: implement batching
-
     pub fn new(mlp: &MLP) -> Loss { 
         let ins = mlp.ins.clone();
 
@@ -246,14 +246,7 @@ impl Loss {
         Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss.clone(), top_sort: top_sort(loss) }
     }
 
-    pub fn train(&self, mlp: &MLP, xs: &Vec<f64>, ys: &Vec<f64>, rate: f64) { 
-        if xs.len() != self.ins.len() { 
-            panic!("Number of inputs does not match!")
-        }
-        if ys.len() != self.exp_outs.len() { 
-            panic!("Number of outputs does not match!")
-        }
-
+    fn compute_grads(&self, xs: &Vec<f64>, ys: &Vec<f64>) { 
         // Update input variables
         for (i,x) in self.ins.iter().zip(xs.iter()) { 
             i.set_data(*x)
@@ -264,6 +257,27 @@ impl Loss {
         }
         forward(&self.top_sort);
         backward(self.loss.clone(), &self.top_sort);
-        mlp.update_weights(rate);
     }
+
+    pub fn batch_train(&self, mlp: &MLP, xss: &Vec<Vec<f64>>, yss: &Vec<Vec<f64>>, rate: f64) {
+        if xss.len() != yss.len() { 
+            panic!("Number of inputs and outputs examples do not match!")
+        }
+        for xs in xss { 
+            if xs.len() != self.ins.len() { 
+                panic!("Number of inputs does not match!")
+            }
+        }
+        for ys in yss { 
+            if ys.len() != self.exp_outs.len() { 
+                panic!("Number of outputs does not match!")
+            }
+        }
+
+        for (xs,ys) in xss.iter().zip(yss.iter()) {
+            self.compute_grads(&xs, &ys);
+        }
+        mlp.update_weights(rate / xss.len() as f64);
+    }
+
 }
