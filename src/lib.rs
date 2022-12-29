@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+
+pub mod op;
 pub mod core;
 pub mod mlp;
 

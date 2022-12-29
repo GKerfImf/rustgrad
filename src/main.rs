@@ -10,6 +10,7 @@ use plotly::contour::Contours;
 use std::f64::consts::PI;
 use rand::Rng;
 
+pub mod op;
 pub mod core;
 pub mod mlp;
 

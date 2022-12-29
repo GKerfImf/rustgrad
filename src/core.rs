@@ -5,8 +5,9 @@ use std::sync::atomic::Ordering;
 use std::ops::Deref;
 use std::ops::{Add,Sub,Mul};
 use std::clone::Clone;
-use std::fmt;
 use std::iter::Sum;
+
+use crate::op::Op;
 
 // ------------------------------------------------
 // https://stackoverflow.com/a/57955092/8125485
@@ -24,30 +25,6 @@ macro_rules! log {
 }
 
 // ------------------------------------------------
-
-#[derive(Debug,PartialEq,Clone,Copy)]
-pub enum Op {
-    Leaf,
-    Add,
-    Mul,
-    ReLu,
-    Tanh
-}
-impl fmt::Display for Op {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Op::Leaf => { write!(f, "") }
-            Op::Add => { write!(f, "+") }
-            Op::Mul => { write!(f, "*") }
-            Op::ReLu => { write!(f, "ReLu") }
-            Op::Tanh => { write!(f, "Tanh") }
-        }   
-    }
-}
-
-impl Default for Op {
-    fn default() -> Self { Op::Leaf }
-}
 
 // https://stackoverflow.com/a/71564648/8125485
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
