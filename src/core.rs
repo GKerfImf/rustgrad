@@ -98,28 +98,6 @@ impl Sum<RefValue> for RefValue {
     }
 }
 
-pub fn relu(a: RefValue) -> RefValue { 
-    return RefValue(Rc::new(RefCell::new(        
-        Value { 
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            data: if a.borrow().data < 0.0 { 0.0 } else { a.borrow().data },
-            grad: 0.0,
-            op: Op::ReLu,
-            children: vec![a.clone()]
-        }
-    )))
-}
-pub fn tanh(a: RefValue) -> RefValue { 
-    return RefValue(Rc::new(RefCell::new(        
-        Value { 
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            data: a.borrow().data.tanh(),
-            grad: 0.0,
-            op: Op::Tanh,
-            children: vec![a.clone()]
-        }
-    )))
-}
 impl RefValue { 
     pub fn get_type(&self) -> Op { 
         return self.borrow().op
@@ -132,6 +110,30 @@ impl RefValue {
     }
     pub fn get_grad(&self) -> f64 { 
         return self.borrow().grad
+    }
+
+    pub fn relu(&self) -> RefValue { 
+        return RefValue(Rc::new(RefCell::new(        
+            Value { 
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: if self.borrow().data < 0.0 { 0.0 } else { self.borrow().data },
+                grad: 0.0,
+                op: Op::ReLu,
+                children: vec![self.clone()]
+            }
+        )))
+    }
+
+    pub fn tanh(&self) -> RefValue { 
+        return RefValue(Rc::new(RefCell::new(        
+            Value { 
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: self.borrow().data.tanh(),
+                grad: 0.0,
+                op: Op::Tanh,
+                children: vec![self.clone()]
+            }
+        )))
     }
 
     fn evaluate_forward(&self) {
@@ -160,7 +162,7 @@ impl RefValue {
             }
         }
     }
-    
+
     fn evaluate_backward(&self) {
         match self.borrow().op { 
             Op::Leaf => { }
