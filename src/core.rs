@@ -10,21 +10,6 @@ use std::iter::Sum;
 use crate::op::Op;
 
 // ------------------------------------------------
-// https://stackoverflow.com/a/57955092/8125485
-
-// The debug version
-#[cfg(debug_assertions)]
-macro_rules! log {
-    ($( $args:expr ),*) => { println!( $( $args ),* ); }
-}
-
-// Non-debug version
-#[cfg(not(debug_assertions))]
-macro_rules! log {
-    ($( $args:expr ),*) => {()}
-}
-
-// ------------------------------------------------
 
 // https://stackoverflow.com/a/71564648/8125485
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -54,7 +39,6 @@ impl Clone for RefValue {
 }
 impl Value { 
     pub fn new(data: f64) -> RefValue {
-        // log!("New [Leaf] node ID={}", NEXT_ID.load(Ordering::Relaxed));
         RefValue(Rc::new(RefCell::new(
             Value { 
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
@@ -68,10 +52,6 @@ impl Add for RefValue {
     type Output = RefValue;
 
     fn add(self, other: RefValue) -> RefValue{
-        // log!("New [+] node ID={}", NEXT_ID.load(Ordering::Relaxed));
-        // log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), self.borrow().id);
-        // log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), other.borrow().id);
-    
         return RefValue(Rc::new(RefCell::new(
             Value { 
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
@@ -87,10 +67,6 @@ impl Mul for RefValue {
     type Output = RefValue;
 
     fn mul(self, other: RefValue) -> RefValue{
-        // log!("New [*] node ID={}", NEXT_ID.load(Ordering::Relaxed));
-        // log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), self.borrow().id);
-        // log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), other.borrow().id);
-    
         return RefValue(Rc::new(RefCell::new(
             Value { 
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
@@ -123,9 +99,6 @@ impl Sum<RefValue> for RefValue {
 }
 
 pub fn relu(a: RefValue) -> RefValue { 
-    // log!("New [ReLu] node ID={}", NEXT_ID.load(Ordering::Relaxed));
-    // log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), a.borrow().id);
-    
     return RefValue(Rc::new(RefCell::new(        
         Value { 
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
@@ -137,9 +110,6 @@ pub fn relu(a: RefValue) -> RefValue {
     )))
 }
 pub fn tanh(a: RefValue) -> RefValue { 
-    // log!("New [Tanh] node ID={}", NEXT_ID.load(Ordering::Relaxed));
-    // log!("  {} --> {}", NEXT_ID.load(Ordering::Relaxed), a.borrow().id);
-    
     return RefValue(Rc::new(RefCell::new(        
         Value { 
             id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
@@ -190,6 +160,7 @@ impl RefValue {
             }
         }
     }
+    
     fn evaluate_backward(&self) {
         match self.borrow().op { 
             Op::Leaf => { }
