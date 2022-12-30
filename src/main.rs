@@ -13,6 +13,7 @@ use rand::Rng;
 pub mod op;
 pub mod core;
 pub mod mlp;
+pub mod nonlin;
 
 fn simple_plot() {
     let mut rng = rand::thread_rng();

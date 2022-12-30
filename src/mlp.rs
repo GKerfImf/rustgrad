@@ -1,9 +1,10 @@
 use rand::Rng;
 use std::fmt;
 use core::slice::Iter;
-use core::iter::{Empty,Once,Chain,Flatten,FlatMap};
+use core::iter::{Once,Chain};
 use std::iter;
 
+use crate::nonlin::NonLin;
 use crate::core::{Value, RefValue};
 use crate::core::{top_sort, backward, forward, update_weights};
 
@@ -14,11 +15,11 @@ pub struct Neuron {
 
     w: Vec<RefValue>,       // Weight variables
     b: RefValue,            // Bias variable
-    nlin: bool              // Apply non-linearity (true/false)
+    nlin: Option<NonLin>    // Apply non-linearity (true/false)
 }
 
 impl Neuron { 
-    pub fn new(ins: Vec<RefValue>, ws: Vec<f64>, b: f64, nlin: bool) -> Neuron { 
+    pub fn new(ins: Vec<RefValue>, ws: Vec<f64>, b: f64, nlin: Option<NonLin>) -> Neuron { 
         if ins.len() != ws.len() { 
             panic!("Number of inputs does not match the number of weights!")
         }
@@ -35,9 +36,11 @@ impl Neuron {
             .map( |(i,w)| i.clone() * w.clone() )
             .sum::<RefValue>() + bias.clone();
 
-        // If [nlin = true], add Tanh non-linearity
-        // let out = if nlin { act.tanh() } else { act };
-        let out = if nlin { act.relu() } else { act };
+        let out = match nlin { 
+            None => act,
+            Some(NonLin::ReLu) => act.tanh(),
+            Some(NonLin::Tanh) => act.relu()
+        };
 
         Neuron { 
             ins: ins, out: out, 
@@ -45,7 +48,7 @@ impl Neuron {
         }
     }
 
-    pub fn with_rand_weights(ins: Vec<RefValue>, nlin: bool) -> Neuron {
+    pub fn with_rand_weights(ins: Vec<RefValue>, nlin: Option<NonLin>) -> Neuron {
         let mut rng = rand::thread_rng();
         let len = ins.len();
         return Neuron::new(
@@ -86,7 +89,7 @@ impl Layer {
     // [ins]  -- vector of inputs
     // [nout] -- number of output variables, essentially the number of neurons
     // [nlin] -- Apply ReLU to [outs] (true/false)
-    fn new(ins: Vec<RefValue>, nout: u32, nlin: bool) -> Layer {
+    fn new(ins: Vec<RefValue>, nout: u32, nlin: Option<NonLin>) -> Layer {
         let mut neurons: Vec<Neuron> = Vec::with_capacity(nout as usize);
         let mut outs: Vec<RefValue> = Vec::with_capacity(nout as usize);
 
@@ -131,7 +134,10 @@ impl MLP {
         let mut outs = ins.clone(); 
 
         for i in 1..lsizes.len() { 
-            let l = Layer::new(outs.clone(), lsizes[i], i != lsizes.len() - 1);
+            let l = Layer::new(
+                outs.clone(), 
+                lsizes[i],
+                if i == lsizes.len() - 1 { None } else { Some(NonLin::Tanh) } );
             outs = l.outs.clone();
             layers.push(l);
         }
@@ -195,9 +201,10 @@ impl fmt::Display for MLP {
                 write!(f,"]")?;
                 // write!(f, " + ({val:>8.3}) [{grad:>8.3}, {bgrad:>8.3}]", val=l.neurons[n].b.get_data(), grad=l.neurons[n].b.get_grad(),bgrad=l.neurons[n].b.get_batch_grad())?;
                 write!(f, " + ({val:>8.3}) ", val=l.neurons[n].b.get_data())?;
-                if l.neurons[n].nlin {
-                    write!(f, " --> {} ", l.neurons[n].out.get_type())?;
-                }
+                match l.neurons[n].nlin {
+                    None => {}
+                    Some(nlin) => { write!(f, " --> {} ", nlin)? }
+                };
                 write!(f, " ==> {} \n", l.neurons[n].out.get_data())?;
             }
             write!(f,"\n")?;
@@ -237,9 +244,11 @@ impl Loss {
         // let data_loss = mlp_outs.iter().zip(exp_outs.iter())
         //     .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
         //     .sum::<RefValue>();
+        
         let data_loss = mlp_outs.iter().zip(exp_outs.iter())
             .map( |(sci,yi)| (Value::new(-1.0) * sci.clone() * yi.clone() + Value::new(1.0)).relu() )
             .sum::<RefValue>();
+
         let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
         let loss = data_loss + Value::new(0.001) * reg_loss; 
 
