@@ -59,12 +59,12 @@ fn simple_plot() {
     //                                  Train the MLP                                  //
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     let mlp = mlp::MLP::new(vec![2,16,16,1]);
-    let loss = mlp::Loss::new(&mlp);
+    let loss = mlp::Loss::with_hinge_loss(&mlp);
 
     // let iterations = 2000;
     // for _ in 0..200 {
     let mut acc = 0.0;
-    while acc < 0.99 {
+    while acc < 1.0 {
         loss.rand_batch_train(&mlp, &x_train, &y_train, 32, 0.01); 
     
         acc = x_train.iter().zip(y_train.iter())

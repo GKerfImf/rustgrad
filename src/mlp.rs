@@ -229,27 +229,51 @@ pub struct Loss {
     top_sort: Vec<RefValue>     //
 }
 impl Loss {
-    pub fn new(mlp: &MLP) -> Loss { 
-        let ins = mlp.ins.clone();
 
-        let mlp_outs: Vec<RefValue> = mlp.outs.clone();
+    pub fn with_hinge_loss(mlp: &MLP) -> Loss {
+
         let mut exp_outs: Vec<RefValue> = Vec::with_capacity(mlp.outs.len());
         for _ in 0..mlp.outs.len() {
             exp_outs.push(Value::new(0.0));
         }
 
-        // let data_loss = mlp_outs.iter().zip(exp_outs.iter())
-        //     .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
-        //     .sum::<RefValue>();
-
-        let data_loss = mlp_outs.iter().zip(exp_outs.iter())
+        let data_loss = mlp.outs.iter().zip(exp_outs.iter())
             .map( |(sci,yi)| (Value::new(-1.0) * sci.clone() * yi.clone() + Value::new(1.0)).relu() )
             .sum::<RefValue>();
 
         let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
         let loss = data_loss + Value::new(0.001) * reg_loss; 
 
-        Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss.clone(), top_sort: topological_sort(loss) }
+        Loss { 
+            ins: mlp.ins.clone(), 
+            mlp_outs: mlp.outs.clone(), 
+            exp_outs: exp_outs, 
+            loss: loss.clone(), 
+            top_sort: topological_sort(loss) 
+        }
+    }
+
+    pub fn with_squared_loss(mlp: &MLP) -> Loss {
+
+        let mut exp_outs: Vec<RefValue> = Vec::with_capacity(mlp.outs.len());
+        for _ in 0..mlp.outs.len() {
+            exp_outs.push(Value::new(0.0));
+        }
+
+        let data_loss = mlp.outs.iter().zip(exp_outs.iter())
+            .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
+            .sum::<RefValue>();
+
+        let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
+        let loss = data_loss + Value::new(0.001) * reg_loss; 
+
+        Loss { 
+            ins: mlp.ins.clone(), 
+            mlp_outs: mlp.outs.clone(), 
+            exp_outs: exp_outs, 
+            loss: loss.clone(), 
+            top_sort: topological_sort(loss) 
+        }
     }
 
     pub fn get_loss(&self) -> f64 { 
