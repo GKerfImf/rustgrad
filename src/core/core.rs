@@ -7,7 +7,7 @@ use std::ops::{Add,Sub,Mul};
 use std::clone::Clone;
 use std::iter::Sum;
 
-use crate::op::Op;
+use crate::core::op::Op;
 
 // ------------------------------------------------
 

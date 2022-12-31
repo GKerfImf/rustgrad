@@ -2,11 +2,8 @@
 #![allow(unused_imports)]
 #![allow(unused_macros)]
 
-pub mod op;
 pub mod core;
 pub mod mlp;
-pub mod nonlin;
-
 use rand::Rng;
 
 use plotly::{Contour, HeatMap, Layout, Plot, Scatter};

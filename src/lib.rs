@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 
-pub mod op;
-pub mod nonlin;
 pub mod core;
-pub mod mlp;
 
 #[cfg(test)]
 mod tests {

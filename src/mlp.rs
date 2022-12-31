@@ -4,9 +4,9 @@ use core::slice::Iter;
 use core::iter::{Once,Chain};
 use std::iter;
 
-use crate::nonlin::NonLin;
-use crate::core::{Value, RefValue};
-use crate::core::{top_sort, backward, forward, update_weights};
+use crate::core::nonlin::NonLin;
+use crate::core::core::{Value, RefValue};
+use crate::core::core::{top_sort, backward, forward, update_weights};
 
 #[derive(Debug)]
 pub struct Neuron {
@@ -286,7 +286,6 @@ impl Loss {
                 panic!("Number of outputs does not match!")
             }
         }
-
 
         let mut rng = rand::thread_rng();
         for _ in 0..batch_size {
