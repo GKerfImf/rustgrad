@@ -244,7 +244,7 @@ impl Loss {
         // let data_loss = mlp_outs.iter().zip(exp_outs.iter())
         //     .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
         //     .sum::<RefValue>();
-        
+
         let data_loss = mlp_outs.iter().zip(exp_outs.iter())
             .map( |(sci,yi)| (Value::new(-1.0) * sci.clone() * yi.clone() + Value::new(1.0)).relu() )
             .sum::<RefValue>();
@@ -253,6 +253,10 @@ impl Loss {
         let loss = data_loss + Value::new(0.001) * reg_loss; 
 
         Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss.clone(), top_sort: top_sort(loss) }
+    }
+
+    pub fn get_loss(&self) -> f64 { 
+        return self.loss.get_data()
     }
 
     fn compute_grads(&self, xs: &Vec<f64>, ys: &Vec<f64>) { 
@@ -268,7 +272,7 @@ impl Loss {
         backward(self.loss.clone(), &self.top_sort);
     }
 
-    pub fn batch_train(&self, mlp: &MLP, xss: &Vec<Vec<f64>>, yss: &Vec<Vec<f64>>, rate: f64) {
+    pub fn rand_batch_train(&self, mlp: &MLP, xss: &Vec<Vec<f64>>, yss: &Vec<Vec<f64>>, batch_size: u64, rate: f64) -> f64 {
         if xss.len() != yss.len() { 
             panic!("Number of inputs and outputs examples do not match!")
         }
@@ -283,10 +287,14 @@ impl Loss {
             }
         }
 
-        for (xs,ys) in xss.iter().zip(yss.iter()) {
-            self.compute_grads(&xs, &ys);
+
+        let mut rng = rand::thread_rng();
+        for _ in 0..batch_size {
+            let i = rng.gen_range(1..xss.len());
+            self.compute_grads(&xss[i], &yss[i]);
         }
-        mlp.update_weights(rate / xss.len() as f64);
+        mlp.update_weights(rate / batch_size as f64);
+        return self.get_loss()
     }
 
 }

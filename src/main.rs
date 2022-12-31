@@ -2,18 +2,20 @@
 #![allow(unused_imports)]
 #![allow(unused_macros)]
 
+pub mod op;
+pub mod core;
+pub mod mlp;
+pub mod nonlin;
+
+use rand::Rng;
+
 use plotly::{Contour, HeatMap, Layout, Plot, Scatter};
 use plotly::plot::ImageFormat;
 use plotly::common::{ColorScale, ColorScalePalette, Title, Mode, Marker};
 use plotly::common::color::{Color, NamedColor};
 use plotly::contour::Contours;
 use std::f64::consts::PI;
-use rand::Rng;
-
-pub mod op;
-pub mod core;
-pub mod mlp;
-pub mod nonlin;
+use std::io::{self, Write};
 
 fn simple_plot() {
     let mut rng = rand::thread_rng();
@@ -66,15 +68,15 @@ fn simple_plot() {
     // for _ in 0..200 {
     let mut acc = 0.0;
     while acc < 0.99 {
-        loss.batch_train(&mlp, &x_train, &y_train, 0.01); 
+        loss.rand_batch_train(&mlp, &x_train, &y_train, 30, 0.01); 
     
         acc = x_train.iter().zip(y_train.iter())
             .map( |(xs,ys)|  mlp.eval(&vec![xs[0], xs[1]])[0] * ys[0] )
             .filter( |y| y >= &0.0 )
             .count() as f64 / ((n1 + n2 + m1 + m2) as f64);
-        print!("{} ", acc);
+        print!("{}\t", acc); 
+        io::stdout().flush().unwrap();
     }
-    println!("");
 
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     //                                   Plot Stuff                                    //
