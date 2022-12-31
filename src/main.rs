@@ -65,7 +65,7 @@ fn simple_plot() {
     // for _ in 0..200 {
     let mut acc = 0.0;
     while acc < 0.99 {
-        loss.rand_batch_train(&mlp, &x_train, &y_train, 30, 0.01); 
+        loss.rand_batch_train(&mlp, &x_train, &y_train, 32, 0.01); 
     
         acc = x_train.iter().zip(y_train.iter())
             .map( |(xs,ys)|  mlp.eval(&vec![xs[0], xs[1]])[0] * ys[0] )

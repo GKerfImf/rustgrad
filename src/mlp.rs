@@ -15,11 +15,11 @@ pub struct Neuron {
 
     w: Vec<RefValue>,       // Weight variables
     b: RefValue,            // Bias variable
-    nlin: Option<NonLin>    // Apply non-linearity (true/false)
+    nlin: NonLin            // Apply non-linearity (None/ReLu/Tanh)
 }
 
 impl Neuron { 
-    pub fn new(ins: Vec<RefValue>, ws: Vec<f64>, b: f64, nlin: Option<NonLin>) -> Neuron { 
+    pub fn new(ins: Vec<RefValue>, ws: Vec<f64>, b: f64, nlin: NonLin) -> Neuron { 
         if ins.len() != ws.len() { 
             panic!("Number of inputs does not match the number of weights!")
         }
@@ -37,9 +37,9 @@ impl Neuron {
             .sum::<RefValue>() + bias.clone();
 
         let out = match nlin { 
-            None => act,
-            Some(NonLin::ReLu) => act.tanh(),
-            Some(NonLin::Tanh) => act.relu()
+            NonLin::None => act,
+            NonLin::ReLu => act.tanh(),
+            NonLin::Tanh => act.relu()
         };
 
         Neuron { 
@@ -48,7 +48,7 @@ impl Neuron {
         }
     }
 
-    pub fn with_rand_weights(ins: Vec<RefValue>, nlin: Option<NonLin>) -> Neuron {
+    pub fn with_rand_weights(ins: Vec<RefValue>, nlin: NonLin) -> Neuron {
         let mut rng = rand::thread_rng();
         let len = ins.len();
         return Neuron::new(
@@ -85,11 +85,8 @@ struct Layer {
 }
 
 
-impl Layer { 
-    // [ins]  -- vector of inputs
-    // [nout] -- number of output variables, essentially the number of neurons
-    // [nlin] -- Apply ReLU to [outs] (true/false)
-    fn new(ins: Vec<RefValue>, nout: u32, nlin: Option<NonLin>) -> Layer {
+impl Layer {
+    fn new(ins: Vec<RefValue>, nout: u32, nlin: NonLin) -> Layer {
         let mut neurons: Vec<Neuron> = Vec::with_capacity(nout as usize);
         let mut outs: Vec<RefValue> = Vec::with_capacity(nout as usize);
 
@@ -137,7 +134,7 @@ impl MLP {
             let l = Layer::new(
                 outs.clone(), 
                 lsizes[i],
-                if i == lsizes.len() - 1 { None } else { Some(NonLin::Tanh) } );
+                if i == lsizes.len() - 1 { NonLin::None } else { NonLin::Tanh } );
             outs = l.outs.clone();
             layers.push(l);
         }
@@ -202,8 +199,8 @@ impl fmt::Display for MLP {
                 // write!(f, " + ({val:>8.3}) [{grad:>8.3}, {bgrad:>8.3}]", val=l.neurons[n].b.get_data(), grad=l.neurons[n].b.get_grad(),bgrad=l.neurons[n].b.get_batch_grad())?;
                 write!(f, " + ({val:>8.3}) ", val=l.neurons[n].b.get_data())?;
                 match l.neurons[n].nlin {
-                    None => {}
-                    Some(nlin) => { write!(f, " --> {} ", nlin)? }
+                    NonLin::None => {}
+                    nlin => { write!(f, " --> {} ", nlin)? }
                 };
                 write!(f, " ==> {} \n", l.neurons[n].out.get_data())?;
             }
