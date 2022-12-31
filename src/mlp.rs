@@ -6,7 +6,7 @@ use std::iter;
 
 use crate::core::nonlin::NonLin;
 use crate::core::core::{Value, RefValue};
-use crate::core::core::{top_sort, backward, forward, update_weights};
+use crate::core::core::{topological_sort, backward, forward, update_weights};
 
 #[derive(Debug)]
 pub struct Neuron {
@@ -139,7 +139,7 @@ impl MLP {
             layers.push(l);
         }
         let uni_out = outs.clone().iter().map( |i| i.clone() ).sum::<RefValue>();  // TODO: improve? 
-        let top_sort = top_sort(uni_out.clone());
+        let top_sort = topological_sort(uni_out.clone());
 
         MLP { ins: ins, outs: outs, layers: layers, uni_out: uni_out, top_sort: top_sort }
     }
@@ -249,7 +249,7 @@ impl Loss {
         let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
         let loss = data_loss + Value::new(0.001) * reg_loss; 
 
-        Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss.clone(), top_sort: top_sort(loss) }
+        Loss { ins: ins, mlp_outs: mlp_outs, exp_outs: exp_outs, loss: loss.clone(), top_sort: topological_sort(loss) }
     }
 
     pub fn get_loss(&self) -> f64 { 

@@ -9,7 +9,9 @@ use std::iter::Sum;
 
 use crate::core::op::Op;
 
-// ------------------------------------------------
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+//                               Value and RefValue                                //
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 
 // https://stackoverflow.com/a/71564648/8125485
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -213,9 +215,12 @@ impl RefValue {
     }
 }
 
-// ------------------------------------------------
 
-pub fn top_sort(root: RefValue) -> Vec<RefValue>{
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+//                                Propagation Utils                                //
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+
+pub fn topological_sort(root: RefValue) -> Vec<RefValue> {
     let mut result = vec![];
     let mut visited = HashSet::new();
 
