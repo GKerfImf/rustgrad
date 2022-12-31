@@ -145,7 +145,5 @@ fn simple_plot() {
 }
 
 fn main() {
-
-
     simple_plot();
 }
