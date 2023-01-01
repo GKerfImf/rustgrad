@@ -259,3 +259,166 @@ pub fn update_weights(variables: &Vec<RefValue>, rate: f64) {
         var.reset_batch_grad();
     }
 }
+
+
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+//                                      Tests                                      //
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+
+#[cfg(test)]
+mod tests {
+
+    #[cfg(test)]
+    mod value { 
+        use approx;
+        use rand::Rng;
+        use more_asserts as ma;
+        use crate::core::core::*;       
+
+        #[test]
+        fn basic() {
+            let v = Value::new(1.0);
+            assert_eq!(v.get_data(), 1.0);
+            assert_eq!(v.get_grad(), 0.0);
+        }
+
+        #[test]
+        fn sum1() {
+            let a = Value::new(10.0);
+            let b = Value::new(1.0);
+            let s = a.clone() + b.clone();
+
+            let top_sort = topological_sort(s.clone());
+            backward(s.clone(), &top_sort);
+
+            assert_eq!(s.get_data(), 11.0);
+            assert_eq!(s.get_grad(), 1.0);
+            assert_eq!(a.get_grad(), 1.0);
+            assert_eq!(b.get_grad(), 1.0);
+        }
+
+        #[test]
+        fn sum2() {
+            let a = Value::new(10.0);
+            let b = Value::new(1.0);
+            let s = a.clone() + b.clone() + b.clone();
+
+            let top_sort = topological_sort(s.clone());
+            backward(s.clone(), &top_sort);
+
+            assert_eq!(s.get_grad(), 1.0);
+            assert_eq!(a.get_grad(), 1.0);
+            assert_eq!(b.get_grad(), 2.0);
+        }
+
+        #[test]
+        fn sub() {
+            let a = Value::new(10.0);
+            let b = Value::new(1.0);
+            let s = a.clone() - b.clone();
+            
+            let top_sort = topological_sort(s.clone());
+            backward(s.clone(), &top_sort);
+            
+            assert_eq!(s.get_data(), 9.0);
+            assert_eq!(s.get_grad(), 1.0);
+            assert_eq!(a.get_grad(), 1.0);
+            assert_eq!(b.get_grad(), -1.0);
+        }
+
+        #[test]
+        fn mul1() {
+            let a = Value::new(10.0);
+            let b = Value::new(2.0);
+            let s = a.clone() * b.clone();
+
+            assert_eq!(s.get_data(), 20.0);
+
+            let top_sort = topological_sort(s.clone());
+            backward(s.clone(), &top_sort);
+
+            assert_eq!(s.get_grad(), 1.0);
+            assert_eq!(a.get_grad(), 2.0);
+            assert_eq!(b.get_grad(), 10.0);
+        }
+
+        #[test]
+        fn mul2() {
+            let a = Value::new(10.0);
+            let s = a.clone() * a.clone();
+
+            assert_eq!(s.get_data(), 100.0);
+
+            let top_sort = topological_sort(s.clone());
+            backward(s.clone(), &top_sort);
+
+            assert_eq!(s.get_grad(), 1.0);
+            assert_eq!(a.get_grad(), 20.0);
+        }
+
+        #[test]
+        fn mul_min() {
+            let mut rng = rand::thread_rng();
+            let a = Value::new((rng.gen::<f64>() - 0.5)*100.0);
+            let s = a.clone() * a.clone();
+
+            let top_sort = topological_sort(s.clone());
+
+            let mut old_val = s.get_data();
+            for _ in 0..50 { 
+                backward(s.clone(), &top_sort);
+                update_weights(&vec![s.clone(), a.clone()], 0.001);
+                forward(&top_sort);
+
+                let new_val = s.get_data();
+                ma::assert_le!(new_val, old_val);   // Value always decreases
+                old_val = new_val;
+            }
+            approx::relative_eq!(s.get_data(), 0.0, epsilon = 0.001);
+        }
+
+        #[test]
+        fn squared_diff() {
+            let mut rng = rand::thread_rng();
+
+            let a = Value::new((rng.gen::<f64>() - 0.5)*100.0);
+            let b = Value::new((rng.gen::<f64>() - 0.5)*100.0);
+            let s = (a.clone() - b.clone()) * (a.clone() - b.clone());
+
+            let top_sort = topological_sort(s.clone());
+            for _ in 0..50 { 
+                backward(s.clone(), &top_sort);
+                update_weights(&vec![s.clone(), a.clone()], 0.001);
+                forward(&top_sort);
+            }
+            approx::relative_eq!(a.get_data(), b.get_data(), epsilon = 0.001);
+        }
+
+        #[test]
+        fn tanh1() {
+            let a = Value::new(0.2);
+            let s = (a.clone() * a.clone() + a.clone()).tanh();
+            let top_sort = topological_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 0.23549574953849797);
+
+            backward(s.clone(), &top_sort);            
+            assert_eq!(a.get_grad(), 1.3223584527290213);
+        }
+
+        #[test]
+        fn relu1() {
+            let a = Value::new(0.2);
+            let s = (a.clone() * a.clone() + a.clone()).relu();
+            let top_sort = topological_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 0.24000000000000002);
+
+            backward(s.clone(), &top_sort);            
+            assert_eq!(a.get_grad(), 1.4);
+        }
+
+    }
+}

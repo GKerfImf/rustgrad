@@ -318,3 +318,59 @@ impl Loss {
     }
 
 }
+
+
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+//                                      Tests                                      //
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+
+#[cfg(test)]
+mod tests {
+
+    #[cfg(test)]
+    mod neurons { 
+        use crate::core::nonlin::*;       
+        use crate::core::core::*;       
+        use crate::mlp::Neuron;
+
+        #[test]
+        fn basic() {
+            let a = Value::new(1.0);
+            let b = Value::new(2.0);
+            let c = Value::new(3.0);
+            let n = Neuron::new(vec![a,b,c], vec![1.0,2.0,3.0], 1.0, NonLin::None);
+
+            let top_sort = topological_sort(n.out.clone());
+            forward(&top_sort);
+
+            assert_eq!(1.0 + 4.0 + 9.0 + 1.0, n.out.get_data());
+        }
+
+        #[test]
+        fn basic2() {
+            let a = Value::new(-4.02704);
+            let b = Value::new(2.0);
+            let n = Neuron::new(vec![a,b], vec![1.0,2.0], 1.0, NonLin::Tanh);
+
+            let top_sort = topological_sort(n.out.clone());
+            forward(&top_sort);
+            approx::relative_eq!(n.out.get_data(), 0.75, epsilon = 0.001);
+        }
+
+        #[test]
+        fn backprop() {
+            let a = Value::new(1.0);
+            let b = Value::new(2.0);
+            let c = Value::new(3.0);
+            let n = Neuron::new(vec![a.clone(),b.clone(),c.clone()], vec![11.0,22.0,33.0], 1.0, NonLin::None);
+
+            let top_sort = topological_sort(n.out.clone());
+
+            forward(&top_sort);
+            backward(n.out.clone(), &top_sort);
+            assert_eq!(a.get_grad(), 11.0);
+            assert_eq!(b.get_grad(), 22.0);
+            assert_eq!(c.get_grad(), 33.0);
+        }
+    }
+}
