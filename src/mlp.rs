@@ -38,8 +38,8 @@ impl Neuron {
 
         let out = match nlin { 
             NonLin::None => act,
-            NonLin::ReLu => act.tanh(),
-            NonLin::Tanh => act.relu()
+            NonLin::ReLu => act.relu(),
+            NonLin::Tanh => act.tanh()
         };
 
         Neuron { 
