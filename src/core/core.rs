@@ -95,11 +95,18 @@ impl Sum<RefValue> for RefValue {
     where
         I: Iterator<Item = RefValue>,
     {
-        let mut result = Value::new(0.0);
-        for v in iter {
-            result = result + v; // TODO: [_ = _ + _] --> [_ += _]
-        }
-        result
+        let result = iter.collect::<Vec<RefValue>>();
+        let sum = result.iter().map( |rv| rv.get_data()).sum();
+        return RefValue(Rc::new(RefCell::new(
+            Value { 
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: sum,
+                grad: 0.0,
+                batch_grad: 0.0,
+                op: Op::Add,
+                children: result
+            }
+        )))
     }
 }
 
@@ -166,9 +173,8 @@ impl RefValue {
         match op { 
             Op::Leaf => { }
             Op::Add => {
-                let l_data = self.borrow().children[0].borrow().data; 
-                let r_data = self.borrow().children[1].borrow().data; 
-                self.borrow_mut().data = l_data + r_data;
+                let sum = self.borrow().children.iter().map( |rv| rv.get_data() ).sum();
+                self.borrow_mut().data = sum;
             }
             Op::Mul => {
                 let l_data = self.borrow().children[0].borrow().data; 
@@ -190,9 +196,8 @@ impl RefValue {
         match self.borrow().op { 
             Op::Leaf => { }
             Op::Add => {
-                let grad = self.borrow().grad; 
-                self.borrow().children[0].update_grads(grad);
-                self.borrow().children[1].update_grads(grad);
+                let grad = self.borrow().grad;
+                self.borrow().children.iter().for_each( |rv| rv.update_grads(grad) );
             }
             Op::Mul => {
                 let grad = self.borrow().grad;
