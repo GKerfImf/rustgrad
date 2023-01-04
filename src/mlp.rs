@@ -1,4 +1,5 @@
 use rand::Rng;
+use rand_distr::{Normal, Distribution};
 use std::fmt;
 use core::slice::Iter;
 use core::iter::{Once,Chain};
@@ -51,10 +52,11 @@ impl Neuron {
     pub fn with_rand_weights(ins: Vec<RefValue>, nlin: NonLin) -> Neuron {
         let mut rng = rand::thread_rng();
         let len = ins.len();
+        let normal = Normal::new(0.0, 1.0).unwrap();
         return Neuron::new(
             ins, 
-            (0..len).map( |_| 2.0 * rng.gen::<f64>() - 1.0 ).collect::<Vec<f64>>(),
-            2.0 * rng.gen::<f64>() - 1.0,
+            (0..len).map( |_| normal.sample(&mut rand::thread_rng()) ).collect::<Vec<f64>>(),
+            normal.sample(&mut rand::thread_rng()),
             nlin
         )
     }
