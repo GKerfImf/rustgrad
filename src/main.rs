@@ -1,11 +1,13 @@
 #![allow(dead_code)]
-#![allow(unused_imports)]
+// #![allow(unused_imports)]
 #![allow(unused_macros)]
 
 pub mod core;
 pub mod mlp;
-use rand::Rng;
+use crate::mlp::mlp::MLP;
+use crate::mlp::loss::Loss;
 
+use rand::Rng;
 use plotly::{Contour, HeatMap, Layout, Plot, Scatter};
 use plotly::plot::ImageFormat;
 use plotly::common::{ColorScale, ColorScalePalette, Title, Mode, Marker};
@@ -59,8 +61,8 @@ fn simple_plot() {
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     //                                  Train the MLP                                  //
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
-    let mlp = mlp::MLP::new(vec![2,16,16,1]);
-    let loss = mlp::Loss::with_hinge_loss(&mlp);
+    let mlp = MLP::new(vec![2,16,16,1]);
+    let loss = Loss::with_hinge_loss(&mlp);
 
     let mut iterations = 0;
     let mut acc = 0.0;
