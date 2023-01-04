@@ -11,12 +11,13 @@ use crate::core::core::{topological_sort, backward, forward, update_weights};
 
 #[derive(Debug)]
 pub struct Neuron {
-    ins: Vec<RefValue>,     // Input variables          // TODO: should be [&Vec<RefValue>]
-    out: RefValue,          // Output variable
+    ins: Vec<RefValue>,         // Input variables          // TODO: should be [&Vec<RefValue>]
+    out: RefValue,              // Output variable
 
-    w: Vec<RefValue>,       // Weight variables
-    b: RefValue,            // Bias variable
-    nlin: NonLin            // Apply non-linearity (None/ReLu/Tanh)
+    w: Vec<RefValue>,           // Weight variables
+    b: RefValue,                // Bias variable
+    parameters: Vec<RefValue>,  // All parameters (weights + bias)
+    nlin: NonLin                // Apply non-linearity (None/ReLu/Tanh)
 }
 
 impl Neuron { 
@@ -32,6 +33,11 @@ impl Neuron {
         }
         let bias: RefValue = Value::new(b);
 
+        let params = weights.iter()
+            .map( |rv| rv.clone() )
+            .chain(iter::once(bias.clone()))
+            .collect::<Vec<RefValue>>();
+
         // [act = ins * weights + bias]
         let act = ins.iter().zip(weights.iter())
             .map( |(i,w)| i.clone() * w.clone() )
@@ -45,7 +51,9 @@ impl Neuron {
 
         Neuron { 
             ins: ins, out: out, 
-            w: weights, b: bias, nlin: nlin       
+            w: weights, b: bias,
+            parameters: params,
+            nlin: nlin       
         }
     }
 
@@ -69,13 +77,12 @@ impl Neuron {
         return self.b.get_data()
     }
 
-    fn update_weights(&self, rate: f64) { 
-        update_weights(&self.w, rate);
-        update_weights(&vec![self.b.clone()], rate);
+    fn update_weights(&self, rate: f64) {
+        update_weights(&self.parameters, rate);
     }
 
-    fn get_parameters(&self) -> Chain<Iter<RefValue>,Once<&RefValue>> { 
-        return self.w.iter().chain(iter::once(&self.b)) //self.w.iter()
+    fn get_parameters(&self) -> Iter<RefValue> { 
+        return self.parameters.iter()
     }
 }
 
@@ -83,9 +90,9 @@ impl Neuron {
 struct Layer {
     ins: Vec<RefValue>,         // Input variables
     outs: Vec<RefValue>,        // Output variables
-    neurons: Vec<Neuron>        // Neurons
+    neurons: Vec<Neuron>,       // Neurons
+    parameters: Vec<RefValue>   // All parameters
 }
-
 
 impl Layer {
     fn new(ins: Vec<RefValue>, nout: u32, nlin: NonLin) -> Layer {
@@ -97,17 +104,17 @@ impl Layer {
             outs.push(neuron.out.clone());
             neurons.push(neuron);
         }
-        Layer { ins: ins, outs: outs, neurons: neurons }
+
+        let params = neurons.iter().flat_map( |n| n.get_parameters() )
+            .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
+        Layer { ins: ins, outs: outs, neurons: neurons, parameters: params }
     }
     fn update_weights(&self, rate: f64) {
-        for n in self.neurons.iter() { 
-            n.update_weights(rate)
-        }
+        update_weights(&self.parameters, rate);
     }
     
-    fn get_parameters(&self) -> Vec<RefValue> {
-        return self.neurons.iter().flat_map( |n| n.get_parameters() )
-                .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
+    fn get_parameters(&self) -> Iter<RefValue> {
+        return self.parameters.iter()
     }
 }
 
