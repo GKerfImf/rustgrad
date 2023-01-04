@@ -24,31 +24,32 @@ fn simple_plot() {
         }
     };
 
+
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     //                                 Generate Input                                  //
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     let mut x_train = Vec::<Vec<f64>>::new();
     let mut y_train = Vec::<Vec<f64>>::new();
 
-    let n1 = 50;
+    let n1 = 100;
     for _ in 0..n1 {
         let (x,y) = generate_circle(7.0, 0.0, 6.0, 6.0);
         x_train.push(vec![x,y]);
         y_train.push(vec![-1.0]);
     }
-    let n2 = 50;
+    let n2 = 100;
     for _ in 0..n2 {
         let (x,y) = generate_circle(-7.0, 0.0, 3.0, 3.0);
         x_train.push(vec![x,y]);
         y_train.push(vec![-1.0]);
     }
-    let m1 = 50;
+    let m1 = 100;
     for _ in 0..m1 {
         let (x,y) = generate_circle(7.0, 0.0, 3.0, 3.0);
         x_train.push(vec![x,y]);
         y_train.push(vec![1.0]);
     }
-    let m2 = 50;
+    let m2 = 100;
     for _ in 0..m2 {
         let (x,y) = generate_circle(-7.0, 0.0, 6.0, 6.0);
         x_train.push(vec![x,y]);
@@ -61,8 +62,7 @@ fn simple_plot() {
     let mlp = mlp::MLP::new(vec![2,16,16,1]);
     let loss = mlp::Loss::with_hinge_loss(&mlp);
 
-    // let iterations = 2000;
-    // for _ in 0..200 {
+    let mut iterations = 0;
     let mut acc = 0.0;
     while acc < 1.0 {
         loss.rand_batch_train(&mlp, &x_train, &y_train, 32, 0.01); 
@@ -71,7 +71,7 @@ fn simple_plot() {
             .map( |(xs,ys)|  mlp.eval(&vec![xs[0], xs[1]])[0] * ys[0] )
             .filter( |y| y >= &0.0 )
             .count() as f64 / ((n1 + n2 + m1 + m2) as f64);
-        print!("{}\t", acc); 
+        print!("[{:>6.3} accuracy at {:>3}'th iteration ]\n", acc, { iterations += 1; iterations }); 
         io::stdout().flush().unwrap();
     }
 
