@@ -1,3 +1,3 @@
 pub mod op;
-pub mod nonlin;
+pub mod nonlinearity;
 pub mod core;

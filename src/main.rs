@@ -1,11 +1,18 @@
 #![allow(dead_code)]
-// #![allow(unused_imports)]
+#![allow(unused_imports)]
 #![allow(unused_macros)]
+#![allow(unused_mut)]
+#![allow(unused_variables)]
 
 pub mod core;
 pub mod mlp;
+
+use crate::mlp::layer::LayerSpec::{FullyConnected,NonLinear};
+
 use crate::mlp::mlp::MLP;
 use crate::mlp::loss::Loss;
+use crate::core::nonlinearity::NonLinearity::Tanh;
+
 
 use rand::Rng;
 use plotly::{Contour, HeatMap, Layout, Plot, Scatter};
@@ -61,7 +68,14 @@ fn simple_plot() {
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     //                                  Train the MLP                                  //
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
-    let mlp = MLP::new(vec![2,16,16,1]);
+
+    let mlp = MLP::new(
+        2, vec![
+            FullyConnected(16), NonLinear(Tanh), 
+            FullyConnected(16), NonLinear(Tanh),
+            FullyConnected(1)
+        ]
+    );
     let loss = Loss::with_hinge_loss(&mlp);
 
     let mut iterations = 0;
@@ -131,5 +145,7 @@ fn simple_plot() {
 }
 
 fn main() {
+
+
     simple_plot();
 }

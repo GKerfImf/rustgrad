@@ -1,11 +1,11 @@
 use rand_distr::Distribution;
 use std::fmt;
 
-use crate::core::nonlin::NonLin;
+use crate::core::nonlinearity::NonLinearity;
 use crate::core::core::{Value, RefValue};
 use crate::core::core::{topological_sort, backward, forward};
+use crate::mlp::layer::{LayerSpec, Layer};
 
-use crate::mlp::layer::Layer;
 
 // MultiLayer Perceptron
 #[derive(Debug)]
@@ -19,24 +19,26 @@ pub struct MLP {
 }
 
 impl MLP { 
-    pub fn new(lsizes: Vec<u32>) -> MLP {
-        let mut ins: Vec<RefValue> = Vec::with_capacity(lsizes[0] as usize);
-        for _ in 0..lsizes[0] {
-            ins.push(Value::new(0.0));
-        }
+    pub fn new(nins: u32, spec: Vec<LayerSpec>) -> MLP {
+        let mut ins: Vec<RefValue> = Vec::with_capacity(nins as usize);
+        (0..nins).for_each( |_| ins.push(Value::new(0.0)) );
 
-        let mut layers: Vec<Layer> = Vec::with_capacity(lsizes.len());
-        let mut outs = ins.clone(); 
+        let mut layers: Vec<Layer> = Vec::with_capacity(spec.len());
 
-        for i in 1..lsizes.len() { 
-            let l = Layer::new(
-                outs.clone(), 
-                lsizes[i],
-                if i == lsizes.len() - 1 { NonLin::None } else { NonLin::Tanh } );
+        let mut outs = ins.clone();
+        for lspec in spec.iter() {
+            let l = match lspec {
+                LayerSpec::FullyConnected(n) => {
+                    Layer::new_fully_connected(outs.clone(), *n)
+                },
+                LayerSpec::NonLinear(nonlin) => {
+                    Layer::new_non_linearity(outs.clone(), *nonlin)
+                }
+            };
             outs = l.outs.clone();
             layers.push(l);
         }
-        let uni_out = outs.clone().iter().map( |i| i.clone() ).sum::<RefValue>();  // TODO: improve? 
+        let uni_out = outs.clone().iter().map( |i| i.clone() ).sum::<RefValue>();
         let top_sort = topological_sort(uni_out.clone());
 
         MLP { ins: ins, outs: outs, layers: layers, uni_out: uni_out, top_sort: top_sort }
@@ -98,10 +100,10 @@ impl fmt::Display for MLP {
                 write!(f,"]")?;
                 // write!(f, " + ({val:>8.3}) [{grad:>8.3}, {bgrad:>8.3}]", val=l.neurons[n].b.get_data(), grad=l.neurons[n].b.get_grad(),bgrad=l.neurons[n].b.get_batch_grad())?;
                 write!(f, " + ({val:>8.3}) ", val=l.neurons[n].b.get_data())?;
-                match l.neurons[n].nlin {
-                    NonLin::None => {}
-                    nlin => { write!(f, " --> {} ", nlin)? }
-                };
+                // match l.neurons[n].nlin {
+                //     NonLin::None => {}
+                //     nlin => { write!(f, " --> {} ", nlin)? }
+                // };
                 write!(f, " ==> {} \n", l.neurons[n].out.get_data())?;
             }
             write!(f,"\n")?;
