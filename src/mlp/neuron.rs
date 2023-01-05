@@ -59,12 +59,12 @@ impl Neuron {
     pub fn with_rand_weights(ins: Vec<RefValue>, nlin: NonLin) -> Neuron {
         let mut rng = rand::thread_rng();
         let len = ins.len();
-        let normal = Normal::new(0.0, 1.0).unwrap();
+        let normal = Normal::new(0.0, (1.0 / len as f64).sqrt() ).unwrap();
         return Neuron::new(
             ins, 
             (0..len).map( |_| normal.sample(&mut rand::thread_rng()) ).collect::<Vec<f64>>(),
-            normal.sample(&mut rand::thread_rng()),
             nlin
+            0.0
         )
     }
     
