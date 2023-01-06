@@ -18,18 +18,25 @@ pub struct Neuron {
 }
 
 impl Neuron { 
-    pub fn new(ins: Vec<RefValue>, ws: Vec<f64>, b: f64) -> Neuron { 
-        if ins.len() != ws.len() { 
-            panic!("Number of inputs does not match the number of weights!")
+
+    // The first argument is a vector of input variables
+    // The second argument is a vector of parameters (bias + weights)
+    pub fn from_vec(ins: Vec<RefValue>, parameters: Vec<f64>) -> Neuron { 
+        if ins.len() != parameters.len() - 1 { 
+            panic!("Number of inputs does not match the number of [parameters - 1]!")
         }
+
+        // Number of weights
+        let nweights = parameters.len() - 1;
 
         // Create a vector of weights and a bias variable
-        let mut weights: Vec<RefValue> = Vec::with_capacity(ws.len());
-        for i in 0..ws.len() {
-            weights.push(Value::new(ws[i]));
+        let mut weights: Vec<RefValue> = Vec::with_capacity(nweights);
+        for i in 1..=nweights {
+            weights.push(Value::new(parameters[i]));
         }
-        let bias: RefValue = Value::new(b);
+        let bias: RefValue = Value::new(parameters[0]);
 
+        // Create a vector of all parameters
         let params = weights.iter()
             .map( |rv| rv.clone() )
             .chain(iter::once(bias.clone()))
@@ -47,14 +54,17 @@ impl Neuron {
         }
     }
 
-    pub fn with_rand_weights(ins: Vec<RefValue>) -> Neuron {
+    // Create a neuron with random weights and 0.0 bias
+    pub fn new(ins: Vec<RefValue>) -> Neuron {
         let mut rng = rand::thread_rng();
         let len = ins.len();
         let normal = Normal::new(0.0, (1.0 / len as f64).sqrt() ).unwrap();
-        return Neuron::new(
+        return Neuron::from_vec(
             ins, 
-            (0..len).map( |_| normal.sample(&mut rand::thread_rng()) ).collect::<Vec<f64>>(),
-            0.0
+            // append 0.0 (bias) to vector of random gaussians (weights)
+            iter::once(0.0).chain( 
+                (0..len).map( |_| normal.sample(&mut rand::thread_rng()) ) 
+            ).collect::<Vec<f64>>()
         )
     }
     
@@ -94,7 +104,8 @@ mod tests {
             let a = Value::new(1.0);
             let b = Value::new(2.0);
             let c = Value::new(3.0);
-            let n = Neuron::new(vec![a,b,c], vec![1.0,2.0,3.0], 1.0);
+            let n = Neuron::from_vec(vec![a,b,c], vec![1.0, 1.0,2.0,3.0]);
+            //                                         ^^^ -- bias
 
             let top_sort = topological_sort(n.out.clone());
             forward(&top_sort);
@@ -118,7 +129,7 @@ mod tests {
             let a = Value::new(1.0);
             let b = Value::new(2.0);
             let c = Value::new(3.0);
-            let n = Neuron::new(vec![a.clone(),b.clone(),c.clone()], vec![11.0,22.0,33.0], 1.0);
+            let n = Neuron::from_vec(vec![a.clone(),b.clone(),c.clone()], vec![1.0, 11.0,22.0,33.0]);
 
             let top_sort = topological_sort(n.out.clone());
 

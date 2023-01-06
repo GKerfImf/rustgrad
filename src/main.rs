@@ -11,7 +11,7 @@ use crate::mlp::layer::LayerSpec::{FullyConnected,NonLinear};
 
 use crate::mlp::mlp::MLP;
 use crate::mlp::loss::Loss;
-use crate::core::nonlinearity::NonLinearity::Tanh;
+use crate::core::nonlinearity::NonLinearity::{Tanh, ReLu};
 
 
 use rand::Rng;
@@ -71,8 +71,8 @@ fn simple_plot() {
 
     let mlp = MLP::new(
         2, vec![
-            FullyConnected(16), NonLinear(Tanh), 
-            FullyConnected(16), NonLinear(Tanh),
+            FullyConnected(16), NonLinear(ReLu), 
+            FullyConnected(16), NonLinear(ReLu),
             FullyConnected(1)
         ]
     );

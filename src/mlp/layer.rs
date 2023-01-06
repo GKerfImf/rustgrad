@@ -26,7 +26,7 @@ impl Layer {
         let mut outs: Vec<RefValue> = Vec::with_capacity(nout as usize);
 
         for _ in 0..nout {
-            let neuron = Neuron::with_rand_weights(ins.clone());
+            let neuron = Neuron::new(ins.clone());
             outs.push(neuron.out.clone());
             neurons.push(neuron);
         }
