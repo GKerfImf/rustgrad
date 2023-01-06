@@ -58,7 +58,7 @@ impl Neuron {
     pub fn new(ins: Vec<RefValue>) -> Neuron {
         let mut rng = rand::thread_rng();
         let len = ins.len();
-        let normal = Normal::new(0.0, (1.0 / len as f64).sqrt() ).unwrap();
+        let normal = Normal::new(0.0, 1.0).unwrap();
         return Neuron::from_vec(
             ins, 
             // append 0.0 (bias) to vector of random gaussians (weights)
