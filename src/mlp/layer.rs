@@ -6,6 +6,7 @@ use crate::core::core::update_weights;
 
 use crate::mlp::neuron::Neuron;
 
+#[derive(Debug, Copy, Clone)]
 pub enum LayerSpec {
     FullyConnected(u32),
     NonLinear(NonLinearity)
@@ -21,7 +22,19 @@ pub struct Layer {
 }
 
 impl Layer {
-    pub fn new_fully_connected(ins: Vec<RefValue>, nout: u32) -> Layer {
+
+    pub fn new(ins: Vec<RefValue>, lspec: LayerSpec) -> Layer {
+        return match lspec {
+            LayerSpec::FullyConnected(n) => {
+                Layer::new_fully_connected(ins, n)
+            },
+            LayerSpec::NonLinear(nonlin) => {
+                Layer::new_non_linearity(ins, nonlin)
+            }
+        }
+    }
+
+    fn new_fully_connected(ins: Vec<RefValue>, nout: u32) -> Layer {
         let mut neurons: Vec<Neuron> = Vec::with_capacity(nout as usize);
         let mut outs: Vec<RefValue> = Vec::with_capacity(nout as usize);
 
@@ -37,7 +50,7 @@ impl Layer {
         Layer { ins: ins, outs: outs, neurons: neurons, parameters: params }
     }
     
-    pub fn new_non_linearity(ins: Vec<RefValue>, nonlinearity: NonLinearity) -> Layer {
+    fn new_non_linearity(ins: Vec<RefValue>, nonlinearity: NonLinearity) -> Layer {
         let mut outs: Vec<RefValue> = Vec::with_capacity(ins.len());
 
         for i in ins.iter() {
@@ -52,7 +65,7 @@ impl Layer {
         Layer { ins: ins, outs: outs, neurons: vec![], parameters: vec![] }
     }
         
-    pub fn new_softmax(ins: Vec<RefValue>) -> Layer {
+    fn new_softmax(ins: Vec<RefValue>) -> Layer {
         // Not implemented yet
         todo!()
     }

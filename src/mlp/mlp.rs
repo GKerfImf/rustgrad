@@ -27,14 +27,7 @@ impl MLP {
 
         let mut outs = ins.clone();
         for lspec in spec.iter() {
-            let l = match lspec {
-                LayerSpec::FullyConnected(n) => {
-                    Layer::new_fully_connected(outs.clone(), *n)
-                },
-                LayerSpec::NonLinear(nonlin) => {
-                    Layer::new_non_linearity(outs.clone(), *nonlin)
-                }
-            };
+            let l = Layer::new(outs.clone(), *lspec);
             outs = l.outs.clone();
             layers.push(l);
         }
