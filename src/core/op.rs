@@ -7,7 +7,8 @@ pub enum Op {
     Add,
     Mul,
     ReLu,
-    Tanh
+    Tanh,
+    Softmax
 }
 
 impl fmt::Display for Op {
@@ -18,6 +19,7 @@ impl fmt::Display for Op {
             Op::Mul => { write!(f, "*") }
             Op::ReLu => { write!(f, "ReLu") }
             Op::Tanh => { write!(f, "Tanh") }
+            Op::Softmax => { write!(f, "Softmax") }
         }   
     }
 }

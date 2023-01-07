@@ -189,10 +189,16 @@ impl RefValue {
                 let data = self.borrow().children[0].borrow().data;
                 self.borrow_mut().data = data.tanh();
             }
+            Op::Softmax => { 
+                todo!()
+            }
         }
     }
 
     fn evaluate_backward(&self) {
+        // Don't propagate if the gradient is zero
+        if self.borrow().grad == 0.0 { return }
+
         match self.borrow().op { 
             Op::Leaf => { }
             Op::Add => {
@@ -215,6 +221,9 @@ impl RefValue {
                 let c_data = self.borrow().children[0].borrow().data; 
                 let grad = self.borrow().grad;
                 self.borrow().children[0].update_grads((1.0 - c_data.tanh().powi(2)) * grad);
+            }
+            Op::Softmax => { 
+                todo!()
             }
         }
     }

@@ -51,6 +51,11 @@ impl Layer {
 
         Layer { ins: ins, outs: outs, neurons: vec![], parameters: vec![] }
     }
+        
+    pub fn new_softmax(ins: Vec<RefValue>) -> Layer {
+        // Not implemented yet
+        todo!()
+    }
 }
 
 impl Layer {
