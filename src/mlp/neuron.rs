@@ -95,6 +95,7 @@ mod tests {
 
     #[cfg(test)]
     mod neurons { 
+        use more_asserts as ma;
         use crate::core::nonlinearity::*;       
         use crate::core::core::*;       
         use crate::mlp::neuron::Neuron;
@@ -113,16 +114,19 @@ mod tests {
             assert_eq!(1.0 + 4.0 + 9.0 + 1.0, n.out.get_data());
         }
 
-        // #[test]
-        // fn basic2() {
-        //     let a = Value::new(-4.02704);
-        //     let b = Value::new(2.0);
-        //     let n = Neuron::new(vec![a,b], vec![1.0,2.0], 1.0, NonLin::Tanh);
+        #[test]
+        fn basic2() {
+            let a = Value::new(-4.02704492547);
+            let b = Value::new(2.0);
+            let n = Neuron::from_vec(vec![a,b], vec![1.0, 1.0, 2.0]);
 
-        //     let top_sort = topological_sort(n.out.clone());
-        //     forward(&top_sort);
-        //     approx::relative_eq!(n.out.get_data(), 0.75, epsilon = 0.001);
-        // }
+            // [o = tanh(1.0 + 1.0*a + 2.0*b)]
+            let o = n.out.clone().tanh();
+
+            let top_sort = topological_sort(o.clone());
+            forward(&top_sort);
+            ma::assert_le!((o.get_data() - 0.75).abs(), 1e-6);
+        }
 
         #[test]
         fn backprop() {

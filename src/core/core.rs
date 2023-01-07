@@ -284,7 +284,6 @@ mod tests {
 
     #[cfg(test)]
     mod value { 
-        use approx;
         use rand::Rng;
         use more_asserts as ma;
         use crate::core::core::*;       
@@ -381,14 +380,14 @@ mod tests {
             let mut old_val = s.get_data();
             for _ in 0..50 { 
                 backward(s.clone(), &top_sort);
-                update_weights(&vec![s.clone(), a.clone()], 0.001);
+                update_weights(&vec![s.clone(), a.clone()], 0.1);
                 forward(&top_sort);
 
                 let new_val = s.get_data();
                 ma::assert_le!(new_val, old_val);   // Value always decreases
                 old_val = new_val;
             }
-            approx::relative_eq!(s.get_data(), 0.0, epsilon = 0.001);
+            ma::assert_le!(s.get_data(), 1e-6);
         }
 
         #[test]
@@ -400,12 +399,12 @@ mod tests {
             let s = (a.clone() - b.clone()) * (a.clone() - b.clone());
 
             let top_sort = topological_sort(s.clone());
-            for _ in 0..50 { 
+            for _ in 0..100 { 
                 backward(s.clone(), &top_sort);
-                update_weights(&vec![s.clone(), a.clone()], 0.001);
+                update_weights(&vec![s.clone(), a.clone()], 0.1);
                 forward(&top_sort);
             }
-            approx::relative_eq!(a.get_data(), b.get_data(), epsilon = 0.001);
+            ma::assert_le!((a.get_data() - b.get_data()).abs(), 1e-6);
         }
 
         #[test]
