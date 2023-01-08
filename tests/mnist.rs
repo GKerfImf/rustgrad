@@ -82,8 +82,8 @@ mod tests {
             let loss = Loss::with_multi_class_hinge_loss(&mlp);
 
             println!("Training the model...");
-            for i in 0..10000 {
-                println!("Loss = {:.8}, \t Iter = {}", loss.rand_batch_train(&mlp, &x_train, &y_train, 64, 0.05), i);
+            for i in 0..50000 {
+                println!("Loss = {:.8}, \t Iter = {}", loss.rand_batch_train(&mlp, &x_train, &y_train, 64, 0.25), i);
             }
 
             // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
