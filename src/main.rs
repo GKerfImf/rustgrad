@@ -76,7 +76,7 @@ fn simple_plot() {
             FullyConnected(1)
         ]
     );
-    let loss = Loss::with_hinge_loss(&mlp);
+    let loss = Loss::with_binary_hinge_loss(&mlp);
 
     let mut iterations = 0;
     let mut acc = 0.0;

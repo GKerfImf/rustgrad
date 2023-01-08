@@ -1,10 +1,7 @@
 use rand::Rng;
 use rand_distr::Distribution;
 
-use crate::core::core::{Value, RefValue};
-use crate::core::core::{topological_sort, backward, forward};
-
-// pub mod mlp;
+use crate::core::core::*;
 use crate::mlp::mlp::MLP;
 
 
@@ -12,15 +9,15 @@ use crate::mlp::mlp::MLP;
 pub struct Loss {
     ins: Vec<RefValue>,         // Input variables
 
-    mlp_outs: Vec<RefValue>,    // 
-    exp_outs: Vec<RefValue>,    // 
-    pub loss: RefValue,             //
+    mlp_outs: Vec<RefValue>,    // Output produced by MLP
+    exp_outs: Vec<RefValue>,    // Expected output
+    pub loss: RefValue,         //
 
     top_sort: Vec<RefValue>     //
 }
 impl Loss {
 
-    pub fn with_hinge_loss(mlp: &MLP) -> Loss {
+    pub fn with_binary_hinge_loss(mlp: &MLP) -> Loss {
 
         let mut exp_outs: Vec<RefValue> = Vec::with_capacity(mlp.outs.len());
         for _ in 0..mlp.outs.len() {
@@ -32,14 +29,14 @@ impl Loss {
             .sum::<RefValue>();
 
         let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
-        let loss = data_loss + Value::new(0.001) * reg_loss; 
+        let loss = data_loss + Value::new(0.001) * reg_loss;
 
-        Loss { 
-            ins: mlp.ins.clone(), 
-            mlp_outs: mlp.outs.clone(), 
-            exp_outs: exp_outs, 
-            loss: loss.clone(), 
-            top_sort: topological_sort(loss) 
+        Loss {
+            ins: mlp.ins.clone(),
+            mlp_outs: mlp.outs.clone(),
+            exp_outs: exp_outs,
+            loss: loss.clone(),
+            top_sort: topological_sort(loss)
         }
     }
 
@@ -55,28 +52,28 @@ impl Loss {
             .sum::<RefValue>();
 
         let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
-        let loss = data_loss + Value::new(0.001) * reg_loss; 
+        let loss = data_loss + Value::new(0.001) * reg_loss;
 
-        Loss { 
-            ins: mlp.ins.clone(), 
-            mlp_outs: mlp.outs.clone(), 
-            exp_outs: exp_outs, 
-            loss: loss.clone(), 
-            top_sort: topological_sort(loss) 
+        Loss {
+            ins: mlp.ins.clone(),
+            mlp_outs: mlp.outs.clone(),
+            exp_outs: exp_outs,
+            loss: loss.clone(),
+            top_sort: topological_sort(loss)
         }
     }
 
-    pub fn get_loss(&self) -> f64 { 
+    pub fn get_loss(&self) -> f64 {
         return self.loss.get_data()
     }
 
-    fn compute_grads(&self, xs: &Vec<f64>, ys: &Vec<f64>) { 
+    fn compute_grads(&self, xs: &Vec<f64>, ys: &Vec<f64>) {
         // Update input variables
-        for (i,x) in self.ins.iter().zip(xs.iter()) { 
+        for (i,x) in self.ins.iter().zip(xs.iter()) {
             i.set_data(*x)
         }
         // Update output variables
-        for (o,y) in self.exp_outs.iter().zip(ys.iter()) { 
+        for (o,y) in self.exp_outs.iter().zip(ys.iter()) {
             o.set_data(*y)
         }
         forward(&self.top_sort);
@@ -84,16 +81,16 @@ impl Loss {
     }
 
     pub fn rand_batch_train(&self, mlp: &MLP, xss: &Vec<Vec<f64>>, yss: &Vec<Vec<f64>>, batch_size: u64, rate: f64) -> f64 {
-        if xss.len() != yss.len() { 
+        if xss.len() != yss.len() {
             panic!("Number of inputs and outputs examples do not match!")
         }
-        for xs in xss { 
-            if xs.len() != self.ins.len() { 
+        for xs in xss {
+            if xs.len() != self.ins.len() {
                 panic!("Number of inputs does not match!")
             }
         }
-        for ys in yss { 
-            if ys.len() != self.exp_outs.len() { 
+        for ys in yss {
+            if ys.len() != self.exp_outs.len() {
                 panic!("Number of outputs does not match!")
             }
         }
