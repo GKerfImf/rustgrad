@@ -40,6 +40,37 @@ impl Loss {
         }
     }
 
+    pub fn with_multi_class_hinge_loss(mlp: &MLP) -> Loss {
+        let mut exp_outs: Vec<RefValue> = Vec::with_capacity(mlp.outs.len());
+        for _ in 0..mlp.outs.len() {
+            exp_outs.push(Value::new(0.0));
+        }
+
+        // Assuming that expected outputs is a vector of 0s and 1s,
+        // [o_star = oi * yi for (oi,yi) in zip(mlp.outs, exp_outs)]
+        // is the value that [mlp] assignes to the correct class.
+        let o_star = mlp.outs.iter().zip(exp_outs.iter())
+            .map( |(oi,yi)| oi.clone() * yi.clone() ).sum::<RefValue>();
+
+        // Term [1 - yi] allows to filter the correct class from the sum.
+        // Term [max(0, 1 + oi - o_star)] is a standard multi-class hinge loss.
+        let data_loss = mlp.outs.iter().zip(exp_outs.iter())
+            .map( |(oi,yi)|
+                (Value::new(1.0) - yi.clone()) * (Value::new(1.0) + oi.clone() - o_star.clone()).relu()
+            ).sum::<RefValue>();
+
+        let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
+        let loss = data_loss + Value::new(0.001) * reg_loss;
+
+        Loss {
+            ins: mlp.ins.clone(),
+            mlp_outs: mlp.outs.clone(),
+            exp_outs: exp_outs,
+            loss: loss.clone(),
+            top_sort: topological_sort(loss)
+        }
+    }
+
     pub fn with_squared_loss(mlp: &MLP) -> Loss {
 
         let mut exp_outs: Vec<RefValue> = Vec::with_capacity(mlp.outs.len());
