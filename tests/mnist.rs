@@ -15,13 +15,15 @@ mod tests {
         use rustgrad::mlp::loss::Loss;
 
         #[test]
-        fn main() {
+        #[ignore]
+        // To run this test use command:
+        // [cargo test mnist_full_scale --release -- --nocapture --ignored]
+        fn mnist_full_scale() {
             // TODO: remove some duplication
 
             let train = 45_000;
             let dev = 5_000;
             let test = 10_000;
-
 
             let one_hot = |x: f64| -> Vec<f64> {
                 let mut v = vec![0.0; 10];
@@ -38,6 +40,7 @@ mod tests {
                 tst_lbl,
                 ..
             } = MnistBuilder::new()
+                .base_path("tests/input/MNIST")
                 .label_format_digit()
                 .training_set_length(50_000)
                 .validation_set_length(10_000)
