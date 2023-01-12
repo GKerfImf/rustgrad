@@ -1,6 +1,7 @@
+#![allow(unused_imports)]
+
 use rand::Rng;
 use rand_distr::Distribution;
-
 use crate::core::core::*;
 use crate::mlp::mlp::MLP;
 

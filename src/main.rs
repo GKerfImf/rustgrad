@@ -1,8 +1,4 @@
-#![allow(dead_code)]
 #![allow(unused_imports)]
-#![allow(unused_macros)]
-#![allow(unused_mut)]
-#![allow(unused_variables)]
 
 pub mod core;
 pub mod mlp;

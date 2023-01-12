@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use rand_distr::Distribution;
 use std::fmt;
 

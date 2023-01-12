@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use rand::Rng;
 use rand_distr::{Normal, Distribution};
 use core::slice::Iter;
