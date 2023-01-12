@@ -137,3 +137,109 @@ impl Loss {
     }
 
 }
+
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+//                                      Tests                                      //
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+
+#[cfg(test)]
+mod tests {
+
+    #[cfg(test)]
+    mod loss {
+        use rand::Rng;
+
+        use crate::core::core::*;
+        use crate::mlp::layer::*;
+
+        use crate::mlp::layer::LayerSpec::{FullyConnected,NonLinear};
+        use crate::mlp::mlp::MLP;
+        use crate::mlp::loss::Loss;
+        use crate::core::nonlinearity::NonLinearity::{Tanh, ReLu};
+
+        // TODO: move to a separate module
+        // TODO: remove duplication with tests::mnist::one_hot;
+        fn one_hot(x: f64) -> Vec<f64> {
+            let mut v = vec![0.0; 10];
+            v[x as usize] = 1.0;
+            return v
+        }
+
+        fn relative_error(a: f64, b: f64) -> f64 {
+            if a == 0.0 && b == 0.0 {
+                return 0.0
+            } else {
+                return (a - b).abs() / (a.abs()).max(b.abs())
+            }
+        }
+
+        #[test]
+        fn with_multi_class_hinge_loss() {
+            let mut rng = rand::thread_rng();
+
+            for _ in 0..100 {
+                let nins = 1;
+                let nouts = 5;
+                let mlp = MLP::new(
+                    nins, vec![
+                        FullyConnected(16), NonLinear(ReLu),
+                        FullyConnected(16), NonLinear(ReLu),
+                        FullyConnected(nouts)
+                    ]
+                );
+                let loss = Loss::with_multi_class_hinge_loss(&mlp);
+
+                let x = rng.gen::<f64>();
+                let y = one_hot(rng.gen_range((0..=nouts)) as f64);
+
+                loss.compute_grads(&vec![x], &y);
+                let grad_an = mlp.ins[0].get_grad();
+
+                loss.compute_grads(&vec![x + 1e-6], &y);
+                let a = loss.get_loss();
+                loss.compute_grads(&vec![x - 1e-6], &y);
+                let b = loss.get_loss();
+
+                let grad_num = (a - b) / 2e-6;
+                let relative_error = relative_error(grad_an, grad_num);
+
+                assert!(relative_error < 1e-6);
+            }
+        }
+
+        #[test]
+        fn with_squared_loss() {
+            let mut rng = rand::thread_rng();
+
+            for _ in 0..100 {
+                let nins = 1;
+                let mlp = MLP::new(
+                    nins, vec![
+                        FullyConnected(2), NonLinear(ReLu),
+                        FullyConnected(4), NonLinear(Tanh),
+                        FullyConnected(8), NonLinear(ReLu),
+                        FullyConnected(16), NonLinear(ReLu),
+                        FullyConnected(1)
+                    ]
+                );
+                let loss = Loss::with_squared_loss(&mlp);
+
+                let x = rng.gen::<f64>();
+                let y = rng.gen::<f64>();
+
+                loss.compute_grads(&vec![x], &vec![y]);
+                let grad_an = mlp.ins[0].get_grad();
+
+                loss.compute_grads(&vec![x + 1e-6], &vec![y]);
+                let a = loss.get_loss();
+                loss.compute_grads(&vec![x - 1e-6], &vec![y]);
+                let b = loss.get_loss();
+
+                let grad_num = (a - b) / 2e-6;
+                let relative_error = relative_error(grad_an, grad_num);
+
+                assert!(relative_error < 1e-6);
+            }
+        }
+    }
+}
