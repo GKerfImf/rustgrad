@@ -9,6 +9,27 @@ use std::iter::Sum;
 
 use crate::core::op::Op;
 
+// TODO: move
+// TODO: rename
+trait IterMaxExt: Iterator {
+    fn iter_max<M>(self) -> M
+    where
+        M: IterMax<Self::Item>,
+        Self: Sized,
+    {
+        M::iter_max(self)
+    }
+}
+
+impl<I: Iterator> IterMaxExt for I {}
+
+trait IterMax<A = Self> {
+    fn iter_max<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = A>;
+}
+
+
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 //                               Value and RefValue                                //
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
@@ -110,6 +131,27 @@ impl Sum<RefValue> for RefValue {
     }
 }
 
+impl IterMax for RefValue {
+    fn iter_max<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = RefValue>,
+    {
+        let result = iter.collect::<Vec<RefValue>>();
+        let max = result.iter().map( |rv| rv.get_data() ).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+        return RefValue(Rc::new(RefCell::new(
+            Value {
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: max,
+                grad: 0.0,
+                batch_grad: 0.0,
+                op: Op::Max,
+                children: result
+            }
+        )))
+    }
+}
+
+
 impl RefValue { 
     pub fn get_type(&self) -> Op { 
         return self.borrow().op
@@ -169,7 +211,7 @@ impl RefValue {
     fn evaluate_forward(&self) {
         let op = self.borrow().op;
         self.reset_grad();
-    
+
         match op { 
             Op::Leaf => { }
             Op::Add => {
@@ -189,8 +231,10 @@ impl RefValue {
                 let data = self.borrow().children[0].borrow().data;
                 self.borrow_mut().data = data.tanh();
             }
-            Op::Softmax => { 
-                todo!()
+            Op::Max => {
+                let max = self.borrow().children.iter().map( |rv| rv.get_data() )
+                    .max_by( |a, b| a.partial_cmp(b).unwrap() ).unwrap();
+                self.borrow_mut().data = max;
             }
         }
     }
@@ -222,8 +266,14 @@ impl RefValue {
                 let grad = self.borrow().grad;
                 self.borrow().children[0].update_grads((1.0 - c_data.tanh().powi(2)) * grad);
             }
-            Op::Softmax => { 
-                todo!()
+            Op::Max => {
+                let max = self.borrow().children.iter().map( |rv| rv.get_data() )
+                    .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+                self.borrow().children.iter().for_each( |rv|
+                    rv.update_grads(
+                        if rv.get_data() == max { self.borrow().grad } else { 0.0 }
+                    )
+                );
             }
         }
     }
@@ -433,5 +483,24 @@ mod tests {
             assert_eq!(a.get_grad(), 1.4);
         }
 
+        #[test]
+        fn max1() {
+            let a = Value::new(-0.2);
+            let b = Value::new( 0.7);
+            let c = Value::new( 0.7);
+            let d = Value::new( 0.4);
+            let s : RefValue = vec![a.clone(), b.clone(), c.clone(), d.clone()].into_iter().iter_max();
+
+            let top_sort = topological_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 0.7);
+
+            backward(s.clone(), &top_sort);
+            assert_eq!(a.get_grad(), 0.0);
+            assert_eq!(b.get_grad(), 1.0);
+            assert_eq!(c.get_grad(), 1.0);
+            assert_eq!(d.get_grad(), 0.0);
+        }
     }
 }
