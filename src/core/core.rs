@@ -169,6 +169,19 @@ impl RefValue {
         return self.borrow().batch_grad
     }
 
+    pub fn exp(&self) -> RefValue {
+        return RefValue(Rc::new(RefCell::new(
+            Value {
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: self.borrow().data.exp(),
+                grad: 0.0,
+                batch_grad: 0.0,
+                op: Op::Exp,
+                children: vec![self.clone()]
+            }
+        )))
+    }
+
     pub fn relu(&self) -> RefValue { 
         return RefValue(Rc::new(RefCell::new(        
             Value { 
@@ -214,6 +227,10 @@ impl RefValue {
 
         match op { 
             Op::Leaf => { }
+            Op::Exp => {
+                let data = self.borrow().children[0].borrow().data;
+                self.borrow_mut().data = data.exp();
+            }
             Op::Add => {
                 let sum = self.borrow().children.iter().map( |rv| rv.get_data() ).sum();
                 self.borrow_mut().data = sum;
@@ -243,8 +260,17 @@ impl RefValue {
         // Don't propagate if the gradient is zero
         if self.borrow().grad == 0.0 { return }
 
-        match self.borrow().op { 
+        match self.borrow().op {
             Op::Leaf => { }
+            Op::Exp => {
+                ///   d(f(exp(x)))/dx
+                /// = d(f(exp(x)))/d(exp(x)) * d(exp(x))/dx
+                /// =                   grad *       exp(x)
+                /// =                   grad *         data
+                let grad = self.borrow().grad;
+                let data = self.borrow().data;
+                self.borrow().children[0].update_grads(grad * data);
+            }
             Op::Add => {
                 let grad = self.borrow().grad;
                 self.borrow().children.iter().for_each( |rv| rv.update_grads(grad) );
@@ -513,6 +539,34 @@ mod tests {
             assert_eq!(b.get_grad(), 1.0);
             assert_eq!(c.get_grad(), 1.0);
             assert_eq!(d.get_grad(), 0.0);
+        }
+
+        #[test]
+        fn exp1() {
+            let a = Value::new(1.0);
+            let s = a.clone().exp();
+            let top_sort = topological_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 2.718281828459045);
+
+            backward(s.clone(), &top_sort);
+            assert_eq!(a.get_grad(), 2.718281828459045);
+        }
+
+        #[test]
+        fn exp2() {
+            let a = Value::new(1.0);
+            let b = Value::new(-1.0);
+
+            let s = a.clone().exp() * b.clone().exp();
+            let top_sort = topological_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 1.0);
+
+            backward(s.clone(), &top_sort);
+            assert_eq!(a.get_grad(), 1.0);
         }
     }
 }
