@@ -250,19 +250,31 @@ impl RefValue {
                 self.borrow().children.iter().for_each( |rv| rv.update_grads(grad) );
             }
             Op::Mul => {
+                ///   d(f(a * b))/da
+                /// = d(f(a * b))/d(a * b) * d(a * b)/da
+                /// =                 grad *           b
+                ///
+                ///   d(f(a * b))/db
+                /// = d(f(a * b))/d(a * b) * d(a * b)/db
+                /// =                 grad *           a
                 let grad = self.borrow().grad;
-                let l_data = self.borrow().children[0].borrow().data; 
-                let r_data = self.borrow().children[1].borrow().data; 
+                let l_data = self.borrow().children[0].borrow().data;
+                let r_data = self.borrow().children[1].borrow().data;
                 self.borrow().children[0].update_grads(r_data * grad);
                 self.borrow().children[1].update_grads(l_data * grad);
             }
-            Op::ReLu => { 
-                let data = self.borrow().data;
+            Op::ReLu => {
+                ///   d(f(max(0,x)))/dx
+                /// = d(f(max(0,x)))/d(max(0,x)) *                  d(max(0,x))/dx
+                /// =                       grad * (if max(0,x) > 0 then 1 else 0)
+                /// =                       grad * (if     data > 0 then 1 else 0)
+                /// =                                 if data > 0 then grad else 0
                 let grad = self.borrow().grad;
+                let data = self.borrow().data;
                 self.borrow().children[0].update_grads(if data > 0.0 { grad } else { 0.0 });
             }
             Op::Tanh => {
-                let c_data = self.borrow().children[0].borrow().data; 
+                let c_data = self.borrow().children[0].borrow().data;
                 let grad = self.borrow().grad;
                 self.borrow().children[0].update_grads((1.0 - c_data.tanh().powi(2)) * grad);
             }
