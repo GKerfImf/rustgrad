@@ -4,7 +4,6 @@ mod tests {
     #[cfg(test)]
     mod mnist {
 
-        use rand::Rng;
         use mnist::*;
         use ndarray::prelude::*;
         use std::io::{self, Write};

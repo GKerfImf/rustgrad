@@ -1,7 +1,7 @@
 use core::slice::Iter;
 
 use crate::core::nonlinearity::NonLinearity;
-use crate::core::core::RefValue;
+use crate::core::core::{Value, RefValue, IterMaxExt};
 use crate::core::core::update_weights;
 
 use crate::mlp::neuron::Neuron;
@@ -97,10 +97,21 @@ impl Layer {
 
         Layer { ins: ins, outs: outs, neurons: vec![], parameters: vec![] }
     }
-        
+
     fn new_softmax(ins: Vec<RefValue>) -> Layer {
-        // Not implemented yet
-        todo!()
+        let max : RefValue = ins.clone().into_iter().iter_max();
+        let small_ins = ins.iter().map( |i| i.clone() - max.clone() );
+
+        let exps = small_ins.clone().map( |i| i.exp() );
+        let exp_sum = exps.clone().sum::<RefValue>();
+        let exp_sum_inv = exp_sum.pow(Value::new(-1.0));
+
+        let mut outs: Vec<RefValue> = Vec::with_capacity(ins.len());
+        for i in small_ins {
+            let out = i.exp() * exp_sum_inv.clone();
+            outs.push(out);
+        }
+        Layer { ins: ins, outs: outs, neurons: vec![], parameters: vec![] }
     }
 }
 
@@ -148,6 +159,30 @@ mod tests {
             forward(&top_sort);
 
             assert_eq!(3.0, o.get_data());
+        }
+
+        #[test]
+        fn softmax1() {
+            let a = Value::new(-1.0);
+            let b = Value::new( 1.0);
+            let c = Value::new( 2.0);
+            let d = Value::new( 0.5);
+            let l = Layer::new_softmax(vec![
+                a.clone(),b.clone(),c.clone(),d.clone()
+            ]);
+            let o = l.outs[2].clone();
+
+            let top_sort = topological_sort(o.clone());
+            forward(&top_sort);
+            assert_eq!(vec![0.03034322855941622, 0.2242078180482011, 0.609460037598877, 0.1359889157935055],
+                l.outs.iter().map( |i| i.get_data() ).collect::<Vec<f64>>()
+            );
+
+            backward(o.clone(), &top_sort);
+            assert_eq!(a.get_grad(), -0.01849298521869313); // 0.030 * (0 - 0.609) = -0.018
+            assert_eq!(b.get_grad(), -0.13664570521761885); // 0.224 * (0 - 0.609) = -0.136
+            assert_eq!(c.get_grad(),  0.2380185001688524 ); // 0.609 * (1 - 0.609) =  0.238
+            assert_eq!(d.get_grad(), -0.08287980973254037); // 0.135 * (0 - 0.609) = -0.082
         }
 
     }
