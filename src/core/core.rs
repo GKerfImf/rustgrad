@@ -169,6 +169,19 @@ impl RefValue {
         return self.borrow().batch_grad
     }
 
+    pub fn pow(&self, n: RefValue) -> RefValue {
+        return RefValue(Rc::new(RefCell::new(
+            Value {
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: self.borrow().data.powf(n.get_data()),
+                grad: 0.0,
+                batch_grad: 0.0,
+                op: Op::Pow,
+                children: vec![self.clone(),n.clone()]
+            }
+        )))
+    }
+
     pub fn exp(&self) -> RefValue {
         return RefValue(Rc::new(RefCell::new(
             Value {
@@ -231,6 +244,11 @@ impl RefValue {
                 let data = self.borrow().children[0].borrow().data;
                 self.borrow_mut().data = data.exp();
             }
+            Op::Pow => {
+                let l_data = self.borrow().children[0].borrow().data;
+                let r_data = self.borrow().children[1].borrow().data;
+                self.borrow_mut().data = l_data.powf(r_data);
+            }
             Op::Add => {
                 let sum = self.borrow().children.iter().map( |rv| rv.get_data() ).sum();
                 self.borrow_mut().data = sum;
@@ -270,6 +288,19 @@ impl RefValue {
                 let grad = self.borrow().grad;
                 let data = self.borrow().data;
                 self.borrow().children[0].update_grads(grad * data);
+            }
+            Op::Pow => {
+                /// Warning: this function assumes that [n] (the second argument) is a
+                /// constant and, hence, does not propagate the gradient through it.
+
+                ///   d(f(x^n))/dx
+                /// = d(f(x^n))/d(x^n) *                         d(x^n)/dx
+                /// =             grad *      n *                   x^(n-1)
+                /// =             grad * r_data * l_data.powf(r_data - 1.0)
+                let grad = self.borrow().grad;
+                let l_data = self.borrow().children[0].borrow().data;
+                let r_data = self.borrow().children[1].borrow().data;
+                self.borrow().children[0].update_grads(grad * r_data * l_data.powf(r_data - 1.0));
             }
             Op::Add => {
                 let grad = self.borrow().grad;
@@ -568,5 +599,36 @@ mod tests {
             backward(s.clone(), &top_sort);
             assert_eq!(a.get_grad(), 1.0);
         }
+
+        #[test]
+        fn pow1() {
+            let a = Value::new(7.0);
+            let n = Value::new(2.0);
+
+            let s = a.clone().pow(n.clone());
+            let top_sort = topological_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 49.0);
+
+            backward(s.clone(), &top_sort);
+            assert_eq!(a.get_grad(), 14.0);
+        }
+
+        #[test]
+        fn pow2() {
+            let a = Value::new( 7.0);
+            let n = Value::new(-1.0);
+
+            let s = a.clone().pow(n.clone());
+            let top_sort = topological_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(),  0.14285714285714285);
+
+            backward(s.clone(), &top_sort);
+            assert_eq!(a.get_grad(), -0.02040816326530612);
+        }
+
     }
 }
