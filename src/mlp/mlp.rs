@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![allow(dead_code)]
 
 use rand_distr::Distribution;
 use std::fmt;

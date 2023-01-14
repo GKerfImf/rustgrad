@@ -150,23 +150,27 @@ impl IterMax for RefValue {
     }
 }
 
-
-impl RefValue { 
-    pub fn get_type(&self) -> Op { 
+// Getters and setters
+impl RefValue {
+    pub fn get_type(&self) -> Op {
         return self.borrow().op
     }
-    pub fn get_data(&self) -> f64 { 
+    pub fn get_data(&self) -> f64 {
         return self.borrow().data
     }
-    pub fn set_data(&self, x: f64) { 
+    pub fn set_data(&self, x: f64) {
         self.borrow_mut().data = x
     }
-    pub fn get_grad(&self) -> f64 { 
+    pub fn get_grad(&self) -> f64 {
         return self.borrow().grad
     }
-    pub fn get_batch_grad(&self) -> f64 { 
+    pub fn get_batch_grad(&self) -> f64 {
         return self.borrow().batch_grad
     }
+}
+
+// Operations on RefValue
+impl RefValue {
 
     pub fn pow(&self, n: RefValue) -> RefValue {
         return RefValue(Rc::new(RefCell::new(
@@ -194,9 +198,9 @@ impl RefValue {
         )))
     }
 
-    pub fn relu(&self) -> RefValue { 
-        return RefValue(Rc::new(RefCell::new(        
-            Value { 
+    pub fn relu(&self) -> RefValue {
+        return RefValue(Rc::new(RefCell::new(
+            Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: if self.borrow().data < 0.0 { 0.0 } else { self.borrow().data },
                 grad: 0.0,
@@ -207,9 +211,9 @@ impl RefValue {
         )))
     }
 
-    pub fn tanh(&self) -> RefValue { 
-        return RefValue(Rc::new(RefCell::new(        
-            Value { 
+    pub fn tanh(&self) -> RefValue {
+        return RefValue(Rc::new(RefCell::new(
+            Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.tanh(),
                 grad: 0.0,
@@ -220,6 +224,11 @@ impl RefValue {
         )))
     }
 
+}
+
+// Forward and backward pass
+impl RefValue {
+
     fn update_grads(&self, grad: f64) {
         self.borrow_mut().grad += grad;
         self.borrow_mut().batch_grad += grad;
@@ -229,7 +238,7 @@ impl RefValue {
         self.borrow_mut().grad = 0.0
     }
 
-    fn reset_batch_grad(&self) { 
+    fn reset_batch_grad(&self) {
         self.borrow_mut().batch_grad = 0.0
     }
 

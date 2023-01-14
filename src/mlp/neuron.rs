@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![allow(dead_code)]
 
 use rand::Rng;
 use rand_distr::{Normal, Distribution};
@@ -19,12 +20,12 @@ pub struct Neuron {
     parameters: Vec<RefValue>,  // All parameters (weights + bias)
 }
 
-impl Neuron { 
+impl Neuron {
 
     // The first argument is a vector of input variables
     // The second argument is a vector of parameters (bias + weights)
-    pub fn from_vec(ins: Vec<RefValue>, parameters: Vec<f64>) -> Neuron { 
-        if ins.len() != parameters.len() - 1 { 
+    pub fn from_vec(ins: Vec<RefValue>, parameters: Vec<f64>) -> Neuron {
+        if ins.len() != parameters.len() - 1 {
             panic!("Number of inputs does not match the number of [parameters - 1]!")
         }
 
@@ -49,8 +50,8 @@ impl Neuron {
             .map( |(i,w)| i.clone() * w.clone() )
             .sum::<RefValue>() + bias.clone();
 
-        Neuron { 
-            ins: ins, out: out, 
+        Neuron {
+            ins: ins, out: out,
             w: weights, b: bias,
             parameters: params
         }
@@ -58,23 +59,22 @@ impl Neuron {
 
     // Create a neuron with random weights and 0.0 bias
     pub fn new(ins: Vec<RefValue>) -> Neuron {
-        let mut rng = rand::thread_rng();
         let len = ins.len();
         let normal = Normal::new(0.0, 1.0).unwrap();
         return Neuron::from_vec(
-            ins, 
+            ins,
             // append 0.0 (bias) to vector of random gaussians (weights)
-            iter::once(0.0).chain( 
-                (0..len).map( |_| normal.sample(&mut rand::thread_rng()) ) 
+            iter::once(0.0).chain(
+                (0..len).map( |_| normal.sample(&mut rand::thread_rng()) )
             ).collect::<Vec<f64>>()
         )
     }
-    
-    pub fn get_weights(&self) -> Vec<f64> { 
+
+    pub fn get_weights(&self) -> Vec<f64> {
         return self.w.iter().map( |rv| rv.get_data() ).collect::<Vec<f64>>()
     }
 
-    pub fn get_bias(&self) -> f64 { 
+    pub fn get_bias(&self) -> f64 {
         return self.b.get_data()
     }
 
@@ -82,7 +82,7 @@ impl Neuron {
         update_weights(&self.parameters, rate);
     }
 
-    pub fn get_parameters(&self) -> Iter<RefValue> { 
+    pub fn get_parameters(&self) -> Iter<RefValue> {
         return self.parameters.iter()
     }
 }
@@ -96,10 +96,10 @@ impl Neuron {
 mod tests {
 
     #[cfg(test)]
-    mod neurons { 
+    mod neurons {
         use more_asserts as ma;
-        use crate::core::nonlinearity::*;       
-        use crate::core::core::*;       
+        use crate::core::nonlinearity::*;
+        use crate::core::core::*;
         use crate::mlp::neuron::Neuron;
 
         #[test]

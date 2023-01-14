@@ -1,5 +1,6 @@
-use core::slice::Iter;
+#![allow(dead_code)]
 
+use core::slice::Iter;
 use crate::core::nonlinearity::NonLinearity;
 use crate::core::core::{Value, RefValue, IterMaxExt};
 use crate::core::core::update_weights;

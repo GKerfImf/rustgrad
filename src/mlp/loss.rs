@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![allow(dead_code)]
 
 use rand::Rng;
 use rand_distr::Distribution;
@@ -190,7 +191,7 @@ mod tests {
                 let loss = Loss::with_multi_class_hinge_loss(&mlp);
 
                 let x = rng.gen::<f64>();
-                let y = one_hot(rng.gen_range((0..=nouts)) as f64);
+                let y = one_hot(rng.gen_range(0..=nouts) as f64);
 
                 loss.compute_grads(&vec![x], &y);
                 let grad_an = mlp.ins[0].get_grad();
