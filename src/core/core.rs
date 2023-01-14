@@ -130,7 +130,6 @@ impl Sum<RefValue> for RefValue {
         )))
     }
 }
-
 impl IterMax for RefValue {
     fn iter_max<I>(iter: I) -> Self
     where
@@ -303,6 +302,9 @@ impl RefValue {
                 self.borrow().children[0].update_grads(grad * r_data * l_data.powf(r_data - 1.0));
             }
             Op::Add => {
+                ///   d(f(Σ x_i))/ dx_i
+                /// = d(f(Σ x_i))/d(Σ x_i) * d(Σ x_i)/dx_i
+                /// =                 grad *         #{x_i}
                 let grad = self.borrow().grad;
                 self.borrow().children.iter().for_each( |rv| rv.update_grads(grad) );
             }
@@ -331,11 +333,19 @@ impl RefValue {
                 self.borrow().children[0].update_grads(if data > 0.0 { grad } else { 0.0 });
             }
             Op::Tanh => {
-                let c_data = self.borrow().children[0].borrow().data;
+                ///   d(f(tanh(x)))/dx
+                /// = d(f(tanh(x)))/d(tanh(x)) *   d(tanh(x))/dx
+                /// =                     grad * (1 - tanh(x)^2)
+                /// =                     grad * (1    - data^2)
+                let data = self.borrow().data;
                 let grad = self.borrow().grad;
-                self.borrow().children[0].update_grads((1.0 - c_data.tanh().powi(2)) * grad);
+                self.borrow().children[0].update_grads(grad * (1.0 - data.powi(2)));
             }
             Op::Max => {
+                /// For [x_i ∈ xs]:
+                ///   d(f(max(xs)))/dx_i
+                /// = d(f(max(xs)))/d(max(xs)) *                   d(max(xs))/dx_i
+                /// =                     grad * (if x_i == max(xs) then 1 else 0)
                 let max = self.borrow().children.iter().map( |rv| rv.get_data() )
                     .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
                 self.borrow().children.iter().for_each( |rv|
