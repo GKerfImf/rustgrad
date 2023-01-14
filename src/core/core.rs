@@ -11,7 +11,7 @@ use crate::core::op::Op;
 
 // TODO: move
 // TODO: rename
-trait IterMaxExt: Iterator {
+pub trait IterMaxExt: Iterator {
     fn iter_max<M>(self) -> M
     where
         M: IterMax<Self::Item>,
@@ -23,7 +23,7 @@ trait IterMaxExt: Iterator {
 
 impl<I: Iterator> IterMaxExt for I {}
 
-trait IterMax<A = Self> {
+pub trait IterMax<A = Self> {
     fn iter_max<I>(iter: I) -> Self
     where
         I: Iterator<Item = A>;
