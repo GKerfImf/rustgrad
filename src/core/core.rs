@@ -278,44 +278,46 @@ impl RefValue {
         if self.borrow().grad == 0.0 { return }
 
         match self.borrow().op {
-            Op::Leaf => { }
+            Op::Leaf => {
+                // Leaf nodes don't have any children, so there's nothing to do
+             }
             Op::Exp => {
-                ///   d(f(exp(x)))/dx
-                /// = d(f(exp(x)))/d(exp(x)) * d(exp(x))/dx
-                /// =                   grad *       exp(x)
-                /// =                   grad *         data
+                //   d(f(exp(x)))/dx
+                // = d(f(exp(x)))/d(exp(x)) * d(exp(x))/dx
+                // =                   grad *       exp(x)
+                // =                   grad *         data
                 let grad = self.borrow().grad;
                 let data = self.borrow().data;
                 self.borrow().children[0].update_grads(grad * data);
             }
             Op::Pow => {
-                /// Warning: this function assumes that [n] (the second argument) is a
-                /// constant and, hence, does not propagate the gradient through it.
+                // Warning: this function assumes that [n] (the second argument) is a
+                // constant and, hence, does not propagate the gradient through it.
 
-                ///   d(f(x^n))/dx
-                /// = d(f(x^n))/d(x^n) *                         d(x^n)/dx
-                /// =             grad *      n *                   x^(n-1)
-                /// =             grad * r_data * l_data.powf(r_data - 1.0)
+                //   d(f(x^n))/dx
+                // = d(f(x^n))/d(x^n) *                         d(x^n)/dx
+                // =             grad *      n *                   x^(n-1)
+                // =             grad * r_data * l_data.powf(r_data - 1.0)
                 let grad = self.borrow().grad;
                 let l_data = self.borrow().children[0].borrow().data;
                 let r_data = self.borrow().children[1].borrow().data;
                 self.borrow().children[0].update_grads(grad * r_data * l_data.powf(r_data - 1.0));
             }
             Op::Add => {
-                ///   d(f(Σ x_i))/ dx_i
-                /// = d(f(Σ x_i))/d(Σ x_i) * d(Σ x_i)/dx_i
-                /// =                 grad *         #{x_i}
+                //   d(f(Σ x_i))/ dx_i
+                // = d(f(Σ x_i))/d(Σ x_i) * d(Σ x_i)/dx_i
+                // =                 grad *         #{x_i}
                 let grad = self.borrow().grad;
                 self.borrow().children.iter().for_each( |rv| rv.update_grads(grad) );
             }
             Op::Mul => {
-                ///   d(f(a * b))/da
-                /// = d(f(a * b))/d(a * b) * d(a * b)/da
-                /// =                 grad *           b
-                ///
-                ///   d(f(a * b))/db
-                /// = d(f(a * b))/d(a * b) * d(a * b)/db
-                /// =                 grad *           a
+                //   d(f(a * b))/da
+                // = d(f(a * b))/d(a * b) * d(a * b)/da
+                // =                 grad *           b
+                //
+                //   d(f(a * b))/db
+                // = d(f(a * b))/d(a * b) * d(a * b)/db
+                // =                 grad *           a
                 let grad = self.borrow().grad;
                 let l_data = self.borrow().children[0].borrow().data;
                 let r_data = self.borrow().children[1].borrow().data;
@@ -323,29 +325,29 @@ impl RefValue {
                 self.borrow().children[1].update_grads(l_data * grad);
             }
             Op::ReLu => {
-                ///   d(f(max(0,x)))/dx
-                /// = d(f(max(0,x)))/d(max(0,x)) *                  d(max(0,x))/dx
-                /// =                       grad * (if max(0,x) > 0 then 1 else 0)
-                /// =                       grad * (if     data > 0 then 1 else 0)
-                /// =                                 if data > 0 then grad else 0
+                //   d(f(max(0,x)))/dx
+                // = d(f(max(0,x)))/d(max(0,x)) *                  d(max(0,x))/dx
+                // =                       grad * (if max(0,x) > 0 then 1 else 0)
+                // =                       grad * (if     data > 0 then 1 else 0)
+                // =                                 if data > 0 then grad else 0
                 let grad = self.borrow().grad;
                 let data = self.borrow().data;
                 self.borrow().children[0].update_grads(if data > 0.0 { grad } else { 0.0 });
             }
             Op::Tanh => {
-                ///   d(f(tanh(x)))/dx
-                /// = d(f(tanh(x)))/d(tanh(x)) *   d(tanh(x))/dx
-                /// =                     grad * (1 - tanh(x)^2)
-                /// =                     grad * (1    - data^2)
+                //   d(f(tanh(x)))/dx
+                // = d(f(tanh(x)))/d(tanh(x)) *   d(tanh(x))/dx
+                // =                     grad * (1 - tanh(x)^2)
+                // =                     grad * (1    - data^2)
                 let data = self.borrow().data;
                 let grad = self.borrow().grad;
                 self.borrow().children[0].update_grads(grad * (1.0 - data.powi(2)));
             }
             Op::Max => {
-                /// For [x_i ∈ xs]:
-                ///   d(f(max(xs)))/dx_i
-                /// = d(f(max(xs)))/d(max(xs)) *                   d(max(xs))/dx_i
-                /// =                     grad * (if x_i == max(xs) then 1 else 0)
+                // For [x_i ∈ xs]:
+                //   d(f(max(xs)))/dx_i
+                // = d(f(max(xs)))/d(max(xs)) *                   d(max(xs))/dx_i
+                // =                     grad * (if x_i == max(xs) then 1 else 0)
                 let max = self.borrow().children.iter().map( |rv| rv.get_data() )
                     .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
                 self.borrow().children.iter().for_each( |rv|
