@@ -5,6 +5,7 @@ use std::clone::Clone;
 pub enum Op {
     Leaf,
     Exp,
+    Log,
     Pow,
     Add,
     Mul,
@@ -18,6 +19,7 @@ impl fmt::Display for Op {
         match self {
             Op::Leaf => { write!(f, "") }
             Op::Exp => { write!(f, "Exp") }
+            Op::Log => { write!(f, "Log") }
             Op::Pow => { write!(f, "Pow") }
             Op::Add => { write!(f, "+") }
             Op::Mul => { write!(f, "*") }

@@ -198,6 +198,19 @@ impl RefValue {
         )))
     }
 
+    pub fn log(&self) -> RefValue {
+        return RefValue(Rc::new(RefCell::new(
+            Value {
+                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+                data: self.borrow().data.ln(),
+                grad: 0.0,
+                batch_grad: 0.0,
+                op: Op::Log,
+                children: vec![self.clone()]
+            }
+        )))
+    }
+
     pub fn relu(&self) -> RefValue {
         return RefValue(Rc::new(RefCell::new(
             Value {
@@ -252,6 +265,10 @@ impl RefValue {
                 let data = self.borrow().children[0].borrow().data;
                 self.borrow_mut().data = data.exp();
             }
+            Op::Log => {
+                let data = self.borrow().children[0].borrow().data;
+                self.borrow_mut().data = data.ln();
+            }
             Op::Pow => {
                 let l_data = self.borrow().children[0].borrow().data;
                 let r_data = self.borrow().children[1].borrow().data;
@@ -298,6 +315,15 @@ impl RefValue {
                 let grad = self.borrow().grad;
                 let data = self.borrow().data;
                 self.borrow().children[0].update_grads(grad * data);
+            }
+            Op::Log => {
+                //   d(f(log(x)))/dx
+                // = d(f(log(x)))/d(log(x)) * d(log(x))/dx
+                // =                   grad *          1/x
+                // =                              grad / x
+                let grad = self.borrow().grad;
+                let c_data = self.borrow().children[0].borrow().data;
+                self.borrow().children[0].update_grads(grad / c_data);
             }
             Op::Pow => {
                 // Warning: this function assumes that [n] (the second argument) is a
@@ -649,6 +675,19 @@ mod tests {
 
             backward(s.clone(), &top_sort);
             assert_eq!(a.get_grad(), -0.02040816326530612);
+        }
+
+        #[test]
+        fn log1() {
+            let a = Value::new(10.0);
+            let s = a.clone().log();
+            let top_sort = topological_sort(s.clone());
+
+            forward(&top_sort);
+            assert_eq!(s.get_data(), 2.3025850929940456840);
+
+            backward(s.clone(), &top_sort);
+            assert_eq!(a.get_grad(), 0.1);
         }
 
     }
