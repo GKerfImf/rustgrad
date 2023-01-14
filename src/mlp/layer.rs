@@ -9,7 +9,8 @@ use crate::mlp::neuron::Neuron;
 #[derive(Debug, Copy, Clone)]
 pub enum LayerSpec {
     FullyConnected(u32),
-    NonLinear(NonLinearity)
+    NonLinear(NonLinearity),
+    SoftMax
 }
 
 
@@ -30,6 +31,11 @@ impl Layer {
                 // from a vector is the same as the default one
                 return Layer::new_non_linearity(ins, nonlin)
             },
+            LayerSpec::SoftMax => {
+                // Softmax layer has no parameters, hence initialization
+                // from a vector is the same as the default one
+                return Layer::new_softmax(ins)
+            },
             LayerSpec::FullyConnected(n) => {
                 if (parameters.len() as u32) != n {
                     panic!("Number of parameters does not match!")
@@ -41,11 +47,14 @@ impl Layer {
 
     pub fn new(ins: Vec<RefValue>, lspec: LayerSpec) -> Layer {
         return match lspec {
-            LayerSpec::FullyConnected(n) => {
-                Layer::new_fully_connected(ins, n)
-            },
             LayerSpec::NonLinear(nonlin) => {
                 Layer::new_non_linearity(ins, nonlin)
+            },
+            LayerSpec::SoftMax => {
+                Layer::new_softmax(ins)
+            },
+            LayerSpec::FullyConnected(n) => {
+                Layer::new_fully_connected(ins, n)
             }
         }
     }
