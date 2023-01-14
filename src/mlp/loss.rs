@@ -19,6 +19,28 @@ pub struct Loss {
 }
 impl Loss {
 
+    pub fn with_cross_entropy_loss(mlp: &MLP) -> Loss {
+        let mut exp_outs: Vec<RefValue> = Vec::with_capacity(mlp.outs.len());
+        for _ in 0..mlp.outs.len() {
+            exp_outs.push(Value::new(0.0));
+        }
+
+        let data_loss = mlp.outs.iter().zip(exp_outs.iter())
+            .map( |(sci,yi)| yi.clone() * sci.clone().log() )
+            .sum::<RefValue>() * Value::new(-1.0);
+
+        let reg_loss = mlp.get_parameters().iter().map( |rv| rv.clone() * rv.clone() ).sum::<RefValue>();
+        let loss = data_loss + Value::new(0.001) * reg_loss;
+
+        Loss {
+            ins: mlp.ins.clone(),
+            mlp_outs: mlp.outs.clone(),
+            exp_outs: exp_outs,
+            loss: loss.clone(),
+            top_sort: topological_sort(loss)
+        }
+    }
+
     pub fn with_binary_hinge_loss(mlp: &MLP) -> Loss {
 
         let mut exp_outs: Vec<RefValue> = Vec::with_capacity(mlp.outs.len());
@@ -153,7 +175,7 @@ mod tests {
         use crate::core::core::*;
         use crate::mlp::layer::*;
 
-        use crate::mlp::layer::LayerSpec::{FullyConnected,NonLinear};
+        use crate::mlp::layer::LayerSpec::*;
         use crate::mlp::mlp::MLP;
         use crate::mlp::loss::Loss;
         use crate::core::nonlinearity::NonLinearity::{Tanh, ReLu};
@@ -242,5 +264,42 @@ mod tests {
                 assert!(relative_error < 1e-6);
             }
         }
+
+
+        #[test]
+        fn with_cross_entropy_loss() {
+            let mut rng = rand::thread_rng();
+
+            for _ in 0..100 {
+                let nins = 1;
+                let nouts = 5;
+                let mlp = MLP::new(
+                    nins, vec![
+                        FullyConnected(16), NonLinear(ReLu),
+                        FullyConnected(16), NonLinear(ReLu),
+                        FullyConnected(nouts), SoftMax
+                    ]
+                );
+                let loss = Loss::with_cross_entropy_loss(&mlp);
+
+                let x = rng.gen::<f64>();
+                let y = one_hot(rng.gen_range(0..=nouts) as f64);
+
+                loss.compute_grads(&vec![x], &y);
+                let grad_an = mlp.ins[0].get_grad();
+
+                loss.compute_grads(&vec![x + 1e-6], &y);
+                let a = loss.get_loss();
+                loss.compute_grads(&vec![x - 1e-6], &y);
+                let b = loss.get_loss();
+
+                let grad_num = (a - b) / 2e-6;
+                let relative_error = relative_error(grad_an, grad_num);
+
+                assert!(relative_error < 1e-6);
+            }
+        }
+
+
     }
 }
