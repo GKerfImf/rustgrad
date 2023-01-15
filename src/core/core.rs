@@ -30,6 +30,25 @@ pub trait IterMax<A = Self> {
 
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+//                                      Grad                                       //
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
+
+#[derive(Debug)]
+struct Grad {
+    curr_grad: f64,
+    batch_grad: f64,
+
+    // // Info for Adam
+    // t: f64, // timestep
+    // m: f64, // 1st moment
+    // v: f64, // 2nd moment
+}
+
+impl Default for Grad {
+    fn default() -> Self { Grad { curr_grad: 0.0, batch_grad: 0.0, m: 0.0, v: 0.0, t: 0.0 } }
+}
+
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 //                               Value and RefValue                                //
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 
@@ -41,10 +60,9 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 pub struct Value {
     id: u64,
     data: f64,
-    grad: f64,
-    batch_grad: f64,
+    grad: Grad,
     op: Op,
-    children: Vec<RefValue> 
+    children: Vec<RefValue>,
 }
 #[derive(Debug)]
 pub struct RefValue(Rc<RefCell<Value>>);
@@ -79,10 +97,9 @@ impl Add for RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data + other.borrow().data,
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::Add,
-                children: vec![self.clone(), other.clone()]
+                children: vec![self.clone(), other.clone()],
+                ..Default::default()
             }
         )))
     }
@@ -95,10 +112,9 @@ impl Mul for RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data * other.borrow().data,
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::Mul,
-                children: vec![self.clone(), other.clone()]
+                children: vec![self.clone(), other.clone()],
+                ..Default::default()
             }
         )))
     }
@@ -121,10 +137,9 @@ impl Sum<RefValue> for RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: sum,
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::Add,
-                children: result
+                children: result,
+                ..Default::default()
             }
         )))
     }
@@ -140,10 +155,9 @@ impl IterMax for RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: max,
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::Max,
-                children: result
+                children: result,
+                ..Default::default()
             }
         )))
     }
@@ -161,11 +175,11 @@ impl RefValue {
         self.borrow_mut().data = x
     }
     pub fn get_grad(&self) -> f64 {
-        return self.borrow().grad
+        return self.borrow().grad.curr_grad
     }
-    pub fn get_batch_grad(&self) -> f64 {
-        return self.borrow().batch_grad
-    }
+    // pub fn get_batch_grad(&self) -> f64 {
+    //     return self.borrow().grad.batch_grad
+    // }
 }
 
 // Operations on RefValue
@@ -176,10 +190,9 @@ impl RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.powf(n.get_data()),
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::Pow,
-                children: vec![self.clone(),n.clone()]
+                children: vec![self.clone(),n.clone()],
+                ..Default::default()
             }
         )))
     }
@@ -189,10 +202,9 @@ impl RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.exp(),
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::Exp,
-                children: vec![self.clone()]
+                children: vec![self.clone()],
+                ..Default::default()
             }
         )))
     }
@@ -202,10 +214,9 @@ impl RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.ln(),
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::Log,
-                children: vec![self.clone()]
+                children: vec![self.clone()],
+                ..Default::default()
             }
         )))
     }
@@ -215,10 +226,9 @@ impl RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: if self.borrow().data < 0.0 { 0.0 } else { self.borrow().data },
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::ReLu,
-                children: vec![self.clone()]
+                children: vec![self.clone()],
+                ..Default::default()
             }
         )))
     }
@@ -228,10 +238,9 @@ impl RefValue {
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.tanh(),
-                grad: 0.0,
-                batch_grad: 0.0,
                 op: Op::Tanh,
-                children: vec![self.clone()]
+                children: vec![self.clone()],
+                ..Default::default()
             }
         )))
     }
@@ -241,24 +250,52 @@ impl RefValue {
 // Forward and backward pass
 impl RefValue {
 
-    fn update_grads(&self, grad: f64) {
-        self.borrow_mut().grad += grad;
-        self.borrow_mut().batch_grad += grad;
+    fn accumulate_grads(&self, grad: f64) {
+        self.borrow_mut().grad.curr_grad += grad;
+        self.borrow_mut().grad.batch_grad += grad;
     }
 
     fn reset_grad(&self) {
-        self.borrow_mut().grad = 0.0
+        self.borrow_mut().grad.curr_grad = 0.0
     }
 
-    fn reset_batch_grad(&self) {
-        self.borrow_mut().batch_grad = 0.0
+    fn discharge_grads(&self, rate: f64) -> f64 {
+        // let alpha = rate;
+        // let beta1 = 0.9;
+        // let beta2 = 0.999;
+
+        // // t <- t + 1
+        // self.borrow_mut().grad.t += 1.0;
+        // let t = self.borrow().grad.t;
+
+        // // Remember the current gradient and reset it
+        // let grad = self.borrow().grad.batch_grad;
+        // self.borrow_mut().grad.curr_grad = 0.0;
+        // self.borrow_mut().grad.batch_grad = 0.0;
+
+        // // Update the first and second moment estimates
+        // let m = beta1 * self.borrow().grad.m + (1.0 - beta1) * grad;
+        // self.borrow_mut().grad.m = m;
+        // let v = beta2 * self.borrow().grad.v + (1.0 - beta2) * grad * grad;
+        // self.borrow_mut().grad.v = v;
+
+        // // Compute the bias-corrected first and second moment estimates
+        // let m_hat = m / (1.0 - beta1.powf(t));
+        // let v_hat = v / (1.0 - beta2.powf(t));
+
+        // return - alpha * m_hat / (v_hat.sqrt() + 1e-8)
+
+        let batch_grad = self.borrow_mut().grad.batch_grad;
+        self.borrow_mut().grad.curr_grad = 0.0;
+        self.borrow_mut().grad.batch_grad = 0.0;
+        return - rate * batch_grad
     }
 
     fn evaluate_forward(&self) {
         let op = self.borrow().op;
         self.reset_grad();
 
-        match op { 
+        match op {
             Op::Leaf => { }
             Op::Exp => {
                 let data = self.borrow().children[0].borrow().data;
@@ -300,7 +337,7 @@ impl RefValue {
 
     fn evaluate_backward(&self) {
         // Don't propagate if the gradient is zero
-        if self.borrow().grad == 0.0 { return }
+        if self.borrow().grad.curr_grad == 0.0 { return }
 
         match self.borrow().op {
             Op::Leaf => {
@@ -311,18 +348,18 @@ impl RefValue {
                 // = d(f(exp(x)))/d(exp(x)) * d(exp(x))/dx
                 // =                   grad *       exp(x)
                 // =                   grad *         data
-                let grad = self.borrow().grad;
+                let grad = self.borrow().grad.curr_grad;
                 let data = self.borrow().data;
-                self.borrow().children[0].update_grads(grad * data);
+                self.borrow().children[0].accumulate_grads(grad * data);
             }
             Op::Log => {
                 //   d(f(log(x)))/dx
                 // = d(f(log(x)))/d(log(x)) * d(log(x))/dx
                 // =                   grad *          1/x
                 // =                              grad / x
-                let grad = self.borrow().grad;
+                let grad = self.borrow().grad.curr_grad;
                 let c_data = self.borrow().children[0].borrow().data;
-                self.borrow().children[0].update_grads(grad / c_data);
+                self.borrow().children[0].accumulate_grads(grad / c_data);
             }
             Op::Pow => {
                 // Warning: this function assumes that [n] (the second argument) is a
@@ -332,17 +369,17 @@ impl RefValue {
                 // = d(f(x^n))/d(x^n) *                          d(x^n)/dx
                 // =             grad *      n *                   x^(n-1)
                 // =             grad * r_data * l_data.powf(r_data - 1.0)
-                let grad = self.borrow().grad;
+                let grad = self.borrow().grad.curr_grad;
                 let l_data = self.borrow().children[0].borrow().data;
                 let r_data = self.borrow().children[1].borrow().data;
-                self.borrow().children[0].update_grads(grad * r_data * l_data.powf(r_data - 1.0));
+                self.borrow().children[0].accumulate_grads(grad * r_data * l_data.powf(r_data - 1.0));
             }
             Op::Add => {
                 //   d(f(Σ x_i))/ dx_i
                 // = d(f(Σ x_i))/d(Σ x_i) * d(Σ x_i)/dx_i
                 // =                 grad *        #{x_i}
-                let grad = self.borrow().grad;
-                self.borrow().children.iter().for_each( |rv| rv.update_grads(grad) );
+                let grad = self.borrow().grad.curr_grad;
+                self.borrow().children.iter().for_each( |rv| rv.accumulate_grads(grad) );
             }
             Op::Mul => {
                 //   d(f(a * b))/da
@@ -352,11 +389,11 @@ impl RefValue {
                 //   d(f(a * b))/db
                 // = d(f(a * b))/d(a * b) * d(a * b)/db
                 // =                 grad *           a
-                let grad = self.borrow().grad;
+                let grad = self.borrow().grad.curr_grad;
                 let l_data = self.borrow().children[0].borrow().data;
                 let r_data = self.borrow().children[1].borrow().data;
-                self.borrow().children[0].update_grads(r_data * grad);
-                self.borrow().children[1].update_grads(l_data * grad);
+                self.borrow().children[0].accumulate_grads(r_data * grad);
+                self.borrow().children[1].accumulate_grads(l_data * grad);
             }
             Op::ReLu => {
                 //   d(f(max(0,x)))/dx
@@ -364,29 +401,30 @@ impl RefValue {
                 // =                       grad * (if max(0,x) > 0 then 1 else 0)
                 // =                       grad * (if     data > 0 then 1 else 0)
                 // =                                 if data > 0 then grad else 0
-                let grad = self.borrow().grad;
+                let grad = self.borrow().grad.curr_grad;
                 let data = self.borrow().data;
-                self.borrow().children[0].update_grads(if data > 0.0 { grad } else { 0.0 });
+                self.borrow().children[0].accumulate_grads(if data > 0.0 { grad } else { 0.0 });
             }
             Op::Tanh => {
                 //   d(f(tanh(x)))/dx
                 // = d(f(tanh(x)))/d(tanh(x)) *   d(tanh(x))/dx
                 // =                     grad * (1 - tanh(x)^2)
                 // =                     grad * (1    - data^2)
+                let grad = self.borrow().grad.curr_grad;
                 let data = self.borrow().data;
-                let grad = self.borrow().grad;
-                self.borrow().children[0].update_grads(grad * (1.0 - data.powi(2)));
+                self.borrow().children[0].accumulate_grads(grad * (1.0 - data.powi(2)));
             }
             Op::Max => {
                 // For [x_i ∈ xs]:
                 //   d(f(max(xs)))/dx_i
                 // = d(f(max(xs)))/d(max(xs)) *                   d(max(xs))/dx_i
                 // =                     grad * (if x_i == max(xs) then 1 else 0)
+                let grad = self.borrow().grad.curr_grad;
                 let max = self.borrow().children.iter().map( |rv| rv.get_data() )
                     .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
                 self.borrow().children.iter().for_each( |rv|
-                    rv.update_grads(
-                        if rv.get_data() == max { self.borrow().grad } else { 0.0 }
+                    rv.accumulate_grads(
+                        if rv.get_data() == max { grad } else { 0.0 }
                     )
                 );
             }
@@ -424,7 +462,7 @@ pub fn forward(nodes: &Vec<RefValue>) {
 }
 
 pub fn backward(root: RefValue, nodes: &Vec<RefValue>) {
-    root.borrow_mut().grad = 1.0;
+    root.borrow_mut().grad.curr_grad = 1.0;
     for node in nodes.iter().rev() {
         node.evaluate_backward();
     }
@@ -432,10 +470,8 @@ pub fn backward(root: RefValue, nodes: &Vec<RefValue>) {
 
 pub fn update_weights(variables: &Vec<RefValue>, rate: f64) {
     for var in variables.iter() {
-        let batch_grad = var.borrow_mut().batch_grad;
-        var.borrow_mut().data -= rate * batch_grad;
-        var.reset_grad();
-        var.reset_batch_grad();
+        let update = var.discharge_grads(rate);
+        var.borrow_mut().data += update;
     }
 }
 
@@ -494,10 +530,10 @@ mod tests {
             let a = Value::new(10.0);
             let b = Value::new(1.0);
             let s = a.clone() - b.clone();
-            
+
             let top_sort = topological_sort(s.clone());
             backward(s.clone(), &top_sort);
-            
+
             assert_eq!(s.get_data(), 9.0);
             assert_eq!(s.get_grad(), 1.0);
             assert_eq!(a.get_grad(), 1.0);
@@ -543,7 +579,7 @@ mod tests {
             let top_sort = topological_sort(s.clone());
 
             let mut old_val = s.get_data();
-            for _ in 0..50 { 
+            for _ in 0..100 {
                 backward(s.clone(), &top_sort);
                 update_weights(&vec![s.clone(), a.clone()], 0.1);
                 forward(&top_sort);
@@ -564,7 +600,7 @@ mod tests {
             let s = (a.clone() - b.clone()) * (a.clone() - b.clone());
 
             let top_sort = topological_sort(s.clone());
-            for _ in 0..100 { 
+            for _ in 0..100 {
                 backward(s.clone(), &top_sort);
                 update_weights(&vec![s.clone(), a.clone()], 0.1);
                 forward(&top_sort);
@@ -581,7 +617,7 @@ mod tests {
             forward(&top_sort);
             assert_eq!(s.get_data(), 0.23549574953849797);
 
-            backward(s.clone(), &top_sort);            
+            backward(s.clone(), &top_sort);
             assert_eq!(a.get_grad(), 1.3223584527290213);
         }
 
@@ -594,7 +630,7 @@ mod tests {
             forward(&top_sort);
             assert_eq!(s.get_data(), 0.24000000000000002);
 
-            backward(s.clone(), &top_sort);            
+            backward(s.clone(), &top_sort);
             assert_eq!(a.get_grad(), 1.4);
         }
 
