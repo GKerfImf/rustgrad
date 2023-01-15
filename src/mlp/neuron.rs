@@ -12,7 +12,7 @@ use crate::core::core::{topological_sort, backward, forward, update_weights};
 
 #[derive(Debug)]
 pub struct Neuron {
-    ins: Vec<RefValue>,         // Input variables          // TODO: should be [&Vec<RefValue>]
+    ins: Vec<RefValue>,         // Input variables
     pub out: RefValue,          // Output variable
 
     pub w: Vec<RefValue>,       // Weight variables

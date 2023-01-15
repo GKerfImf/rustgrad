@@ -1,14 +1,10 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-pub mod core;
-pub mod mlp;
-
-use crate::mlp::layer::LayerSpec::{FullyConnected,NonLinear};
-
-use crate::mlp::mlp::MLP;
-use crate::mlp::loss::Loss;
-use crate::core::nonlinearity::NonLinearity::{Tanh, ReLu};
+use rustgrad::mlp::layer::LayerSpec::*;
+use rustgrad::mlp::mlp::MLP;
+use rustgrad::mlp::loss::Loss;
+use rustgrad::core::nonlinearity::NonLinearity::{Tanh, ReLu};
 
 
 use rand::Rng;

@@ -10,7 +10,6 @@ use std::iter::Sum;
 use crate::core::op::Op;
 
 // TODO: move
-// TODO: rename
 pub trait IterMaxExt: Iterator {
     fn iter_max<M>(self) -> M
     where
@@ -61,13 +60,13 @@ impl Clone for RefValue {
         RefValue(self.0.clone())
     }
 }
-impl Value { 
+impl Value {
     pub fn new(data: f64) -> RefValue {
         RefValue(Rc::new(RefCell::new(
-            Value { 
+            Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: data, 
-                ..Default::default() 
+                data: data,
+                ..Default::default()
             }
         )))
     }
@@ -77,7 +76,7 @@ impl Add for RefValue {
 
     fn add(self, other: RefValue) -> RefValue{
         return RefValue(Rc::new(RefCell::new(
-            Value { 
+            Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data + other.borrow().data,
                 grad: 0.0,
@@ -93,7 +92,7 @@ impl Mul for RefValue {
 
     fn mul(self, other: RefValue) -> RefValue{
         return RefValue(Rc::new(RefCell::new(
-            Value { 
+            Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data * other.borrow().data,
                 grad: 0.0,
@@ -108,7 +107,7 @@ impl Sub for RefValue {
     type Output = RefValue;
 
     fn sub(self, other: RefValue) -> RefValue {
-        return self + Value::new(-1.0) * other; 
+        return self + Value::new(-1.0) * other;
     }
 }
 impl Sum<RefValue> for RefValue {
@@ -119,7 +118,7 @@ impl Sum<RefValue> for RefValue {
         let result = iter.collect::<Vec<RefValue>>();
         let sum = result.iter().map( |rv| rv.get_data()).sum();
         return RefValue(Rc::new(RefCell::new(
-            Value { 
+            Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: sum,
                 grad: 0.0,
@@ -279,11 +278,11 @@ impl RefValue {
                 self.borrow_mut().data = sum;
             }
             Op::Mul => {
-                let l_data = self.borrow().children[0].borrow().data; 
-                let r_data = self.borrow().children[1].borrow().data; 
+                let l_data = self.borrow().children[0].borrow().data;
+                let r_data = self.borrow().children[1].borrow().data;
                 self.borrow_mut().data = l_data * r_data;
             }
-            Op::ReLu => { 
+            Op::ReLu => {
                 let data = self.borrow().children[0].borrow().data;
                 self.borrow_mut().data = if data < 0.0 { 0.0 } else { data }
             }
@@ -330,7 +329,7 @@ impl RefValue {
                 // constant and, hence, does not propagate the gradient through it.
 
                 //   d(f(x^n))/dx
-                // = d(f(x^n))/d(x^n) *                         d(x^n)/dx
+                // = d(f(x^n))/d(x^n) *                          d(x^n)/dx
                 // =             grad *      n *                   x^(n-1)
                 // =             grad * r_data * l_data.powf(r_data - 1.0)
                 let grad = self.borrow().grad;
@@ -341,7 +340,7 @@ impl RefValue {
             Op::Add => {
                 //   d(f(Σ x_i))/ dx_i
                 // = d(f(Σ x_i))/d(Σ x_i) * d(Σ x_i)/dx_i
-                // =                 grad *         #{x_i}
+                // =                 grad *        #{x_i}
                 let grad = self.borrow().grad;
                 self.borrow().children.iter().for_each( |rv| rv.update_grads(grad) );
             }
@@ -405,9 +404,9 @@ pub fn topological_sort(root: RefValue) -> Vec<RefValue> {
     let mut visited = HashSet::new();
 
     fn dfs(result: &mut Vec<RefValue>, visited: &mut HashSet<u64>, value: RefValue) {
-        if visited.contains(&value.borrow().id) { 
+        if visited.contains(&value.borrow().id) {
             return
-        } 
+        }
         visited.insert(value.borrow().id);
         for ch in value.borrow().children.iter() {
             dfs(result, visited, ch.clone());
@@ -418,13 +417,13 @@ pub fn topological_sort(root: RefValue) -> Vec<RefValue> {
     return result
 }
 
-pub fn forward(nodes: &Vec<RefValue>) { 
-    for node in nodes.iter() { 
+pub fn forward(nodes: &Vec<RefValue>) {
+    for node in nodes.iter() {
         node.evaluate_forward();
     }
 }
 
-pub fn backward(root: RefValue, nodes: &Vec<RefValue>) { 
+pub fn backward(root: RefValue, nodes: &Vec<RefValue>) {
     root.borrow_mut().grad = 1.0;
     for node in nodes.iter().rev() {
         node.evaluate_backward();
@@ -449,10 +448,10 @@ pub fn update_weights(variables: &Vec<RefValue>, rate: f64) {
 mod tests {
 
     #[cfg(test)]
-    mod value { 
+    mod value {
         use rand::Rng;
         use more_asserts as ma;
-        use crate::core::core::*;       
+        use crate::core::core::*;
 
         #[test]
         fn basic() {
