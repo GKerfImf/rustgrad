@@ -6,6 +6,7 @@ use std::ops::Deref;
 use std::ops::{Add,Sub,Mul};
 use std::clone::Clone;
 use std::iter::Sum;
+use math::round;
 
 use crate::core::op::Op;
 
@@ -45,7 +46,7 @@ struct Grad {
 }
 
 impl Default for Grad {
-    fn default() -> Self { Grad { curr_grad: 0.0, batch_grad: 0.0, m: 0.0, v: 0.0, t: 0.0 } }
+    fn default() -> Self { Grad { curr_grad: 0.0, batch_grad: 0.0, /* m: 0.0, v: 0.0, t: 0.0 */ } }
 }
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
@@ -265,8 +266,8 @@ impl RefValue {
         // let beta2 = 0.999;
 
         // // t <- t + 1
-        // self.borrow_mut().grad.t += 1.0;
-        // let t = self.borrow().grad.t;
+        // self.borrow_mut().grad.t += 1.0 / 32.0;
+        // let t = round::ceil(self.borrow().grad.t,0);
 
         // // Remember the current gradient and reset it
         // let grad = self.borrow().grad.batch_grad;
