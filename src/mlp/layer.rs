@@ -2,8 +2,10 @@
 
 use core::slice::Iter;
 use crate::core::nonlinearity::NonLinearity;
-use crate::core::core::{Value, RefValue, IterMaxExt};
+use crate::core::core::{Value, RefValue};
 use crate::core::core::update_weights;
+
+use crate::util::itermax::IterMaxExt;
 
 use crate::mlp::neuron::Neuron;
 

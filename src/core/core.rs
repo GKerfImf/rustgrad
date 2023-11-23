@@ -1,34 +1,12 @@
 use std::{cell::RefCell, rc::Rc};
 use std::collections::HashSet;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
-use std::ops::Deref;
-use std::ops::{Add,Sub,Mul};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::ops::{Add,Sub,Mul,Deref};
 use std::clone::Clone;
 use std::iter::Sum;
-use math::round;
 
+use crate::util::itermax::IterMax;
 use crate::core::op::Op;
-
-// TODO: move
-pub trait IterMaxExt: Iterator {
-    fn iter_max<M>(self) -> M
-    where
-        M: IterMax<Self::Item>,
-        Self: Sized,
-    {
-        M::iter_max(self)
-    }
-}
-
-impl<I: Iterator> IterMaxExt for I {}
-
-pub trait IterMax<A = Self> {
-    fn iter_max<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = A>;
-}
-
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 //                                      Grad                                       //
@@ -145,6 +123,7 @@ impl Sum<RefValue> for RefValue {
         )))
     }
 }
+
 impl IterMax for RefValue {
     fn iter_max<I>(iter: I) -> Self
     where
@@ -488,6 +467,7 @@ mod tests {
     mod value {
         use rand::Rng;
         use more_asserts as ma;
+        use crate::util::itermax::IterMaxExt;
         use crate::core::core::*;
 
         #[test]
