@@ -86,21 +86,9 @@ impl fmt::Display for MLP {
         write!(f, "\n")?;
 
         write!(f, "Weights:\n")?;
-        for l in self.layers.iter() { 
-            for n in 0..l.neurons.len() { 
-                write!(f," [")?;
-                for w in 0..l.neurons[0].w.len() { 
-                    // write!(f, "{val:>8.3} [{grad:>8.3}, {bgrad:>8.3}]", val=l.neurons[n].w[w].get_data(),grad=l.neurons[n].w[w].get_grad(),bgrad=l.neurons[n].w[w].get_batch_grad())?;
-                    write!(f, "{val:>8.3} ", val=l.neurons[n].w[w].get_data())?;
-                }
-                write!(f,"]")?;
-                // write!(f, " + ({val:>8.3}) [{grad:>8.3}, {bgrad:>8.3}]", val=l.neurons[n].b.get_data(), grad=l.neurons[n].b.get_grad(),bgrad=l.neurons[n].b.get_batch_grad())?;
-                write!(f, " + ({val:>8.3}) ", val=l.neurons[n].b.get_data())?;
-                // match l.neurons[n].nlin {
-                //     NonLin::None => {}
-                //     nlin => { write!(f, " --> {} ", nlin)? }
-                // };
-                write!(f, " ==> {} \n", l.neurons[n].out.get_data())?;
+        for l in self.layers.iter() {
+            for n in 0..l.neurons.len() {
+                write!(f, "{}", l.neurons[n])?;
             }
             write!(f,"\n")?;
         }

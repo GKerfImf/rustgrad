@@ -4,7 +4,7 @@
 use rand::Rng;
 use rand_distr::{Normal, Distribution};
 use core::slice::Iter;
-use std::iter;
+use std::{iter, fmt};
 
 use crate::core::nonlinearity::NonLinearity;
 use crate::core::core::{Value, RefValue};
@@ -15,8 +15,8 @@ pub struct Neuron {
     ins: Vec<RefValue>,         // Input variables
     out: RefValue,              // Output variable
 
-    pub w: Vec<RefValue>,       // Weight variables
-    pub b: RefValue,            // Bias variable
+    w: Vec<RefValue>,           // Weight variables
+    b: RefValue,                // Bias variable
     parameters: Vec<RefValue>,  // All parameters (weights + bias)
 }
 
@@ -90,6 +90,21 @@ impl Neuron {
         return self.out.clone();
     }
 
+}
+
+impl fmt::Display for Neuron {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        write!(f," [")?;
+        for w in 0..self.w.len() {
+            write!(f, "{val:>8.3} ", val=self.w[w].get_data())?;
+        }
+        write!(f,"]")?;
+        write!(f, " + ({val:>8.3}) ", val=self.b.get_data())?;
+        write!(f, " ==> {val:>8.3} \n", val=self.get_output_variable().get_data())?;
+
+        return Ok(())
+    }
 }
 
 
