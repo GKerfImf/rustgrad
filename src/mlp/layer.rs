@@ -69,7 +69,7 @@ impl Layer {
 
         for p in parameters.iter() {
             let neuron = Neuron::from_vec(ins.clone(), p.clone());
-            outs.push(neuron.out.clone());
+            outs.push(neuron.get_output_variable());
             neurons.push(neuron);
         }
 
@@ -85,7 +85,7 @@ impl Layer {
 
         for _ in 0..nout {
             let neuron = Neuron::new(ins.clone());
-            outs.push(neuron.out.clone());
+            outs.push(neuron.get_output_variable());
             neurons.push(neuron);
         }
 

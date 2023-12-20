@@ -13,7 +13,7 @@ use crate::core::core::{topological_sort, backward, forward, update_weights};
 #[derive(Debug)]
 pub struct Neuron {
     ins: Vec<RefValue>,         // Input variables
-    pub out: RefValue,          // Output variable
+    out: RefValue,              // Output variable
 
     pub w: Vec<RefValue>,       // Weight variables
     pub b: RefValue,            // Bias variable
@@ -85,6 +85,11 @@ impl Neuron {
     pub fn get_parameters(&self) -> Iter<RefValue> {
         return self.parameters.iter()
     }
+
+    pub fn get_output_variable(&self) -> RefValue {
+        return self.out.clone();
+    }
+
 }
 
 
