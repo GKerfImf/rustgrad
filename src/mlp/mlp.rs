@@ -31,7 +31,7 @@ impl MLP {
         let mut outs = ins.clone();
         for lspec in spec.iter() {
             let l = Layer::new(outs.clone(), *lspec);
-            outs = l.outs.clone();
+            outs = l.get_out_variables();
             layers.push(l);
         }
         let uni_out = outs.clone().iter().map( |i| i.clone() ).sum::<RefValue>();
@@ -87,9 +87,7 @@ impl fmt::Display for MLP {
 
         write!(f, "Weights:\n")?;
         for l in self.layers.iter() {
-            for n in 0..l.neurons.len() {
-                write!(f, "{}", l.neurons[n])?;
-            }
+            write!(f, "{}", l)?;
             write!(f,"\n")?;
         }
         write!(f,"\n")?;

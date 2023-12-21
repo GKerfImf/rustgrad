@@ -4,10 +4,11 @@ use core::slice::Iter;
 use crate::core::nonlinearity::NonLinearity;
 use crate::core::core::{Value, RefValue};
 use crate::core::core::update_weights;
-
 use crate::util::itermax::IterMaxExt;
-
 use crate::mlp::neuron::Neuron;
+use std::fmt;
+
+
 
 #[derive(Debug, Copy, Clone)]
 pub enum LayerSpec {
@@ -20,8 +21,8 @@ pub enum LayerSpec {
 #[derive(Debug)]
 pub struct Layer {
     ins: Vec<RefValue>,             // Input variables
-    pub outs: Vec<RefValue>,        // Output variables
-    pub neurons: Vec<Neuron>,       // Neurons                  // TODO: remove?
+    outs: Vec<RefValue>,            // Output variables
+    neurons: Vec<Neuron>,           // Neurons
     parameters: Vec<RefValue>       // All parameters
 }
 
@@ -132,11 +133,24 @@ impl Layer {
     pub fn update_weights(&self, rate: f64) {
         update_weights(&self.parameters, rate);
     }
-    
+
     pub fn get_parameters(&self) -> Iter<RefValue> {
         return self.parameters.iter()
     }
 
+    pub fn get_out_variables(&self) -> Vec<RefValue> {
+        return self.outs.clone()
+    }
+
+}
+
+impl fmt::Display for Layer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for n in 0..self.neurons.len() {
+            write!(f, "{}", self.neurons[n])?;
+        }
+        return Ok(())
+    }
 }
 
 
