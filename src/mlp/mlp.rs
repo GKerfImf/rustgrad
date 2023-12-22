@@ -30,7 +30,7 @@ impl MLP {
 
         let mut outs = ins.clone();
         for lspec in spec.iter() {
-            let l = Layer::new(outs.clone(), *lspec);
+            let l = Layer::new(outs.clone(), *lspec).build();
             outs = l.get_out_variables();
             layers.push(l);
         }

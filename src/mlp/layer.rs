@@ -26,81 +26,31 @@ pub struct Layer {
     parameters: Vec<RefValue>       // All parameters
 }
 
-impl Layer {
+pub struct LayerBuilder {
+    ins: Vec<RefValue>,
+    spec: LayerSpec,
+    params: Option<Vec<Vec<f64>>>
+}
 
-    pub fn from_vec(ins: Vec<RefValue>, parameters: Vec<Vec<f64>>, lspec: LayerSpec) -> Layer {
-        match lspec {
-            LayerSpec::NonLinear(nonlin) => {
-                // Non-linearity layer has no parameters, hence initialization
-                // from a vector is the same as the default one
-                return Layer::new_non_linearity(ins, nonlin)
+impl LayerBuilder {
+
+    fn set_params(&mut self, params: Vec<Vec<f64>>) -> &mut Self {
+        match self.spec {
+            LayerSpec::FullyConnected(_) => {
+                self.params = Some(params);
+                self
             },
-            LayerSpec::SoftMax => {
-                // Softmax layer has no parameters, hence initialization
-                // from a vector is the same as the default one
-                return Layer::new_softmax(ins)
-            },
-            LayerSpec::FullyConnected(n) => {
-                if (parameters.len() as u32) != n {
-                    panic!("Number of parameters does not match!")
-                }
-                return Layer::from_vec_fully_connected(ins, parameters)
+            _ => {
+                panic!("Parameters can be set only for fully connected layer!");
             }
         }
     }
 
-    pub fn new(ins: Vec<RefValue>, lspec: LayerSpec) -> Layer {
-        return match lspec {
-            LayerSpec::NonLinear(nonlin) => {
-                Layer::new_non_linearity(ins, nonlin)
-            },
-            LayerSpec::SoftMax => {
-                Layer::new_softmax(ins)
-            },
-            LayerSpec::FullyConnected(n) => {
-                Layer::new_fully_connected(ins, n)
-            }
-        }
-    }
+    fn nonlinear_layer(&self, nonlinearity: NonLinearity) -> Layer {
+        let mut outs: Vec<RefValue> = Vec::with_capacity(self.ins.len());
 
-
-    fn from_vec_fully_connected(ins: Vec<RefValue>, parameters: Vec<Vec<f64>>) -> Layer {
-        let mut neurons: Vec<Neuron> = Vec::with_capacity(parameters.len());
-        let mut outs: Vec<RefValue> = Vec::with_capacity(parameters.len());
-
-        for p in parameters.iter() {
-            let neuron = Neuron::from_vec(ins.clone(), p.clone());
-            outs.push(neuron.get_output_variable());
-            neurons.push(neuron);
-        }
-
-        let params = neurons.iter().flat_map( |n| n.get_parameters() )
-            .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
-
-        Layer { ins: ins, outs: outs, neurons: neurons, parameters: params }
-    }
-
-    fn new_fully_connected(ins: Vec<RefValue>, nout: u32) -> Layer {
-        let mut neurons: Vec<Neuron> = Vec::with_capacity(nout as usize);
-        let mut outs: Vec<RefValue> = Vec::with_capacity(nout as usize);
-
-        for _ in 0..nout {
-            let neuron = Neuron::new(ins.clone());
-            outs.push(neuron.get_output_variable());
-            neurons.push(neuron);
-        }
-
-        let params = neurons.iter().flat_map( |n| n.get_parameters() )
-            .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
-
-        Layer { ins: ins, outs: outs, neurons: neurons, parameters: params }
-    }
-    
-    fn new_non_linearity(ins: Vec<RefValue>, nonlinearity: NonLinearity) -> Layer {
-        let mut outs: Vec<RefValue> = Vec::with_capacity(ins.len());
-
-        for i in ins.iter() {
-            let out = match nonlinearity { 
+        for i in self.ins.iter() {
+            let out = match nonlinearity {
                 NonLinearity::None => { panic!("Non-linearity cannot be None!") },
                 NonLinearity::ReLu => i.relu(),
                 NonLinearity::Tanh => i.tanh()
@@ -108,27 +58,73 @@ impl Layer {
             outs.push(out);
         }
 
-        Layer { ins: ins, outs: outs, neurons: vec![], parameters: vec![] }
+        Layer { ins: self.ins.clone(), outs: outs, neurons: vec![], parameters: vec![] }
     }
 
-    fn new_softmax(ins: Vec<RefValue>) -> Layer {
-        let max : RefValue = ins.clone().into_iter().iter_max();
-        let small_ins = ins.iter().map( |i| i.clone() - max.clone() );
+    fn softmax_layer(&self) -> Layer {
+        let max : RefValue = self.ins.clone().into_iter().iter_max();
+        let small_ins = self.ins.iter().map( |i| i.clone() - max.clone() );
 
         let exps = small_ins.clone().map( |i| i.exp() );
         let exp_sum = exps.clone().sum::<RefValue>();
         let exp_sum_inv = exp_sum.pow(Value::new(-1.0));
 
-        let mut outs: Vec<RefValue> = Vec::with_capacity(ins.len());
+        let mut outs: Vec<RefValue> = Vec::with_capacity(self.ins.len());
         for i in small_ins {
             let out = i.exp() * exp_sum_inv.clone();
             outs.push(out);
         }
-        Layer { ins: ins, outs: outs, neurons: vec![], parameters: vec![] }
+        Layer { ins: self.ins.clone(), outs: outs, neurons: vec![], parameters: vec![] }
+    }
+
+    fn fully_connected_layer(&self, nout: u32) -> Layer {
+        let mut neurons: Vec<Neuron> = Vec::with_capacity(nout as usize);
+        let mut outs: Vec<RefValue> = Vec::with_capacity(nout as usize);
+
+        if let Some(params) = &self.params {
+            for param in params.iter() {
+                let neuron = Neuron::from_vec(self.ins.clone(), param.clone());
+                outs.push(neuron.get_output_variable());
+                neurons.push(neuron);
+            }
+        } else {
+            for _ in 0..nout {
+                let neuron = Neuron::new(self.ins.clone());
+                outs.push(neuron.get_output_variable());
+                neurons.push(neuron);
+            }
+        }
+
+        let params = neurons.iter().flat_map( |n| n.get_parameters() )
+            .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
+
+        Layer { ins: self.ins.clone(), outs: outs, neurons: neurons, parameters: params }
+    }
+
+    pub fn build(&mut self) -> Layer {
+        match self.spec {
+            LayerSpec::NonLinear(nonlin) => {
+                self.nonlinear_layer(nonlin)
+            },
+            LayerSpec::SoftMax => {
+                self.softmax_layer()
+            },
+            LayerSpec::FullyConnected(nout) => {
+                self.fully_connected_layer(nout)
+            }
+        }
     }
 }
 
 impl Layer {
+
+    pub fn new(ins: Vec<RefValue>, spec: LayerSpec) -> LayerBuilder {
+        LayerBuilder {
+            ins,
+            spec,
+            params: None
+        }
+    }
 
     pub fn update_weights(&self, rate: f64) {
         update_weights(&self.parameters, rate);
@@ -170,14 +166,14 @@ mod tests {
         fn basic() {
             let a = Value::new(-1.0);
             let b = Value::new( 1.0);
-            let l = Layer::from_vec(vec![a,b],
-                vec![
-                    vec![0.0, 5.0,2.0],
-                    vec![1.0, 3.0,3.0],
-                    vec![2.0, 1.0,4.0],
-                ],
-                LayerSpec::FullyConnected(3)
-            );
+            let l = Layer::new(
+                vec![a,b], LayerSpec::FullyConnected(3)
+                ).set_params(vec![
+                    vec![0.0, 5.0, 2.0],
+                    vec![1.0, 3.0, 3.0],
+                    vec![2.0, 1.0, 4.0],
+                ]).build();
+
 
             let o = l.outs.clone().iter().map( |i| i.clone() ).sum::<RefValue>();
 
@@ -193,9 +189,10 @@ mod tests {
             let b = Value::new( 1.0);
             let c = Value::new( 2.0);
             let d = Value::new( 0.5);
-            let l = Layer::new_softmax(vec![
-                a.clone(),b.clone(),c.clone(),d.clone()
-            ]);
+            let l = Layer::new(
+                    vec![a.clone(),b.clone(),c.clone(),d.clone()],
+                    LayerSpec::SoftMax
+                ).build();
             let o = l.outs[2].clone();
 
             let top_sort = topological_sort(o.clone());
