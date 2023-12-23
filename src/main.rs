@@ -62,13 +62,13 @@ fn simple_plot() {
     //                                  Train the MLP                                  //
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 
-    let mlp = MLP::new(
-        2, vec![
-            FullyConnected(16), NonLinear(ReLu), 
-            FullyConnected(16), NonLinear(ReLu),
-            FullyConnected(1)
-        ]
-    );
+    let mlp =
+        MLP::new(2)
+        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
+        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
+        .add_layer(FullyConnected(1))
+        .build();
+
     let loss = Loss::with_binary_hinge_loss(&mlp);
 
     let mut iterations = 0;

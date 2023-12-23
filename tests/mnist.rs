@@ -76,12 +76,12 @@ mod tests {
                 ).collect::<Vec<Vec<f64>>>();
 
             println!("Constructing the model...");
-            let mlp = MLP::new(
-                784, vec![
-                    FullyConnected(22), NonLinear(ReLu),
-                    FullyConnected(10)
-                ]
-            );
+            let mlp =
+                MLP::new(784)
+                    .add_layer(FullyConnected(22))
+                    .add_layer(NonLinear(ReLu))
+                    .add_layer(FullyConnected(10))
+                    .build();
             let loss = Loss::with_multi_class_hinge_loss(&mlp);
 
             println!("Training the model...");

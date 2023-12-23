@@ -203,13 +203,13 @@ mod tests {
             for _ in 0..100 {
                 let nins = 1;
                 let nouts = 5;
-                let mlp = MLP::new(
-                    nins, vec![
-                        FullyConnected(16), NonLinear(ReLu),
-                        FullyConnected(16), NonLinear(ReLu),
-                        FullyConnected(nouts)
-                    ]
-                );
+                let mlp =
+                    MLP::new(nins)
+                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
+                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
+                        .add_layer(FullyConnected(nouts))
+                        .build();
+
                 let loss = Loss::with_multi_class_hinge_loss(&mlp);
 
                 let x = rng.gen::<f64>();
@@ -236,15 +236,16 @@ mod tests {
 
             for _ in 0..100 {
                 let nins = 1;
-                let mlp = MLP::new(
-                    nins, vec![
-                        FullyConnected(2), NonLinear(ReLu),
-                        FullyConnected(4), NonLinear(Tanh),
-                        FullyConnected(8), NonLinear(ReLu),
-                        FullyConnected(16), NonLinear(ReLu),
-                        FullyConnected(1)
-                    ]
-                );
+                let mlp =
+                    MLP::new(nins)
+                        .add_layer(FullyConnected(2)).add_layer(NonLinear(ReLu))
+                        .add_layer(FullyConnected(4)).add_layer(NonLinear(Tanh))
+                        .add_layer(FullyConnected(8)).add_layer(NonLinear(ReLu))
+                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
+                        .add_layer(FullyConnected(1))
+                        .build();
+
+
                 let loss = Loss::with_squared_loss(&mlp);
 
                 let x = rng.gen::<f64>();
@@ -273,13 +274,14 @@ mod tests {
             for _ in 0..100 {
                 let nins = 1;
                 let nouts = 5;
-                let mlp = MLP::new(
-                    nins, vec![
-                        FullyConnected(16), NonLinear(ReLu),
-                        FullyConnected(16), NonLinear(ReLu),
-                        FullyConnected(nouts), SoftMax
-                    ]
-                );
+                let mlp =
+                    MLP::new(nins)
+                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
+                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
+                        .add_layer(FullyConnected(nouts)).add_layer(SoftMax)
+                        .build();
+
+
                 let loss = Loss::with_cross_entropy_loss(&mlp);
 
                 let x = rng.gen::<f64>();

@@ -21,15 +21,28 @@ pub struct MLP {
     top_sort: Vec<RefValue>     // 
 }
 
-impl MLP { 
-    pub fn new(nins: u32, spec: Vec<LayerSpec>) -> MLP {
-        let mut ins: Vec<RefValue> = Vec::with_capacity(nins as usize);
-        (0..nins).for_each( |_| ins.push(Value::new(0.0)) );
+pub struct MPLBuilder {
+    nins: u32,
+    spec: Vec<LayerSpec>,
+}
 
-        let mut layers: Vec<Layer> = Vec::with_capacity(spec.len());
+impl MPLBuilder {
+
+    pub fn add_layer(&mut self, spec: LayerSpec) -> &mut Self {
+        self.spec.push(spec);
+        self
+    }
+
+    pub fn build(&self) -> MLP {
+        let mut ins: Vec<RefValue> = Vec::with_capacity(self.nins as usize);
+        (0..self.nins).for_each(
+            |_| ins.push(Value::new(0.0))
+        );
+
+        let mut layers: Vec<Layer> = Vec::with_capacity(self.spec.len());
 
         let mut outs = ins.clone();
-        for lspec in spec.iter() {
+        for lspec in self.spec.iter() {
             let l = Layer::new(outs.clone(), *lspec).build();
             outs = l.get_out_variables();
             layers.push(l);
@@ -40,8 +53,20 @@ impl MLP {
         MLP { ins: ins, outs: outs, layers: layers, uni_out: uni_out, top_sort: top_sort }
     }
 
+
+}
+
+impl MLP {
+
+    pub fn new(nins: u32) -> MPLBuilder {
+        MPLBuilder {
+            nins: nins,
+            spec: vec![],
+        }
+    }
+
     pub fn update_weights(&self, rate: f64) {
-        for l in self.layers.iter() { 
+        for l in self.layers.iter() {
             l.update_weights(rate)
         }
     }
