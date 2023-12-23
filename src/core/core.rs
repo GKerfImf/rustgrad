@@ -15,16 +15,11 @@ use crate::core::op::Op;
 #[derive(Debug)]
 struct Grad {
     curr_grad: f64,
-    batch_grad: f64,
-
-    // // Info for Adam
-    // t: f64, // timestep
-    // m: f64, // 1st moment
-    // v: f64, // 2nd moment
+    batch_grad: f64
 }
 
 impl Default for Grad {
-    fn default() -> Self { Grad { curr_grad: 0.0, batch_grad: 0.0, /* m: 0.0, v: 0.0, t: 0.0 */ } }
+    fn default() -> Self { Grad { curr_grad: 0.0, batch_grad: 0.0 } }
 }
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
@@ -240,31 +235,6 @@ impl RefValue {
     }
 
     fn discharge_grads(&self, rate: f64) -> f64 {
-        // let alpha = rate;
-        // let beta1 = 0.9;
-        // let beta2 = 0.999;
-
-        // // t <- t + 1
-        // self.borrow_mut().grad.t += 1.0 / 32.0;
-        // let t = round::ceil(self.borrow().grad.t,0);
-
-        // // Remember the current gradient and reset it
-        // let grad = self.borrow().grad.batch_grad;
-        // self.borrow_mut().grad.curr_grad = 0.0;
-        // self.borrow_mut().grad.batch_grad = 0.0;
-
-        // // Update the first and second moment estimates
-        // let m = beta1 * self.borrow().grad.m + (1.0 - beta1) * grad;
-        // self.borrow_mut().grad.m = m;
-        // let v = beta2 * self.borrow().grad.v + (1.0 - beta2) * grad * grad;
-        // self.borrow_mut().grad.v = v;
-
-        // // Compute the bias-corrected first and second moment estimates
-        // let m_hat = m / (1.0 - beta1.powf(t));
-        // let v_hat = v / (1.0 - beta2.powf(t));
-
-        // return - alpha * m_hat / (v_hat.sqrt() + 1e-8)
-
         let batch_grad = self.borrow_mut().grad.batch_grad;
         self.borrow_mut().grad.curr_grad = 0.0;
         self.borrow_mut().grad.batch_grad = 0.0;
