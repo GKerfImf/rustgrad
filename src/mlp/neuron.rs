@@ -51,8 +51,10 @@ impl Neuron {
             .sum::<RefValue>() + bias.clone();
 
         Neuron {
-            ins: ins, out: out,
-            w: weights, b: bias,
+            ins,
+            out,
+            w: weights,
+            b: bias,
             parameters: params
         }
     }
@@ -61,7 +63,7 @@ impl Neuron {
     pub fn new(ins: Vec<RefValue>) -> Neuron {
         let len = ins.len();
         let normal = Normal::new(0.0, 1.0).unwrap();
-        return Neuron::from_vec(
+        Neuron::from_vec(
             ins,
             // append 0.0 (bias) to vector of random gaussians (weights)
             iter::once(0.0).chain(
@@ -71,11 +73,11 @@ impl Neuron {
     }
 
     pub fn get_weights(&self) -> Vec<f64> {
-        return self.w.iter().map( |rv| rv.get_data() ).collect::<Vec<f64>>()
+        self.w.iter().map( |rv| rv.get_data() ).collect::<Vec<f64>>()
     }
 
     pub fn get_bias(&self) -> f64 {
-        return self.b.get_data()
+        self.b.get_data()
     }
 
     fn update_weights(&self, rate: f64) {
@@ -83,11 +85,11 @@ impl Neuron {
     }
 
     pub fn get_parameters(&self) -> Iter<RefValue> {
-        return self.parameters.iter()
+        self.parameters.iter()
     }
 
     pub fn get_output_variable(&self) -> RefValue {
-        return self.out.clone();
+        self.out.clone()
     }
 
 }
@@ -103,7 +105,7 @@ impl fmt::Display for Neuron {
         write!(f, " + ({val:>8.3}) ", val=self.b.get_data())?;
         write!(f, " ==> {val:>8.3} \n", val=self.get_output_variable().get_data())?;
 
-        return Ok(())
+        Ok(())
     }
 }
 

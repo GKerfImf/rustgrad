@@ -53,7 +53,6 @@ impl MPLBuilder {
         MLP { ins: ins, outs: outs, layers: layers, uni_out: uni_out, top_sort: top_sort }
     }
 
-
 }
 
 impl MLP {
@@ -72,8 +71,8 @@ impl MLP {
     }
     
     pub fn get_parameters(&self) -> Vec<RefValue> {
-        return self.layers.iter().flat_map( |l| l.get_parameters() )
-                .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
+        self.layers.iter().flat_map( |l| l.get_parameters() )
+                .map( |rv| rv.clone() ).collect::<Vec<RefValue>>()
     }
 
     fn forward(&self, xs: &Vec<f64>) { 
@@ -88,7 +87,7 @@ impl MLP {
     }
     pub fn eval(&self, xs: &Vec<f64>) -> Vec<f64> { 
         self.forward(xs);
-        return self.outs.iter().map( |rv| rv.get_data() ).collect()
+        self.outs.iter().map( |rv| rv.get_data() ).collect()
     }
 
     fn backward(&self) { 
@@ -108,14 +107,14 @@ impl fmt::Display for MLP {
         for i in self.ins.iter() { 
             write!(f, " [{val:>8.3}]\n", val=i.get_data())?;
         }
-        write!(f, "\n")?;
+        writeln!(f)?;
 
         write!(f, "Weights:\n")?;
         for l in self.layers.iter() {
             write!(f, "{}", l)?;
-            write!(f,"\n")?;
+            writeln!(f)?;
         }
-        write!(f,"\n")?;
+        writeln!(f)?;
 
         // Print [outs]
         write!(f, "Outputs:\n")?;

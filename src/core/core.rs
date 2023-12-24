@@ -57,7 +57,7 @@ impl Value {
         RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: data,
+                data,
                 ..Default::default()
             }
         )))
@@ -67,7 +67,7 @@ impl Add for RefValue {
     type Output = RefValue;
 
     fn add(self, other: RefValue) -> RefValue{
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data + other.borrow().data,
@@ -82,7 +82,7 @@ impl Mul for RefValue {
     type Output = RefValue;
 
     fn mul(self, other: RefValue) -> RefValue{
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data * other.borrow().data,
@@ -97,7 +97,7 @@ impl Sub for RefValue {
     type Output = RefValue;
 
     fn sub(self, other: RefValue) -> RefValue {
-        return self + Value::new(-1.0) * other;
+        self + Value::new(-1.0) * other
     }
 }
 impl Sum<RefValue> for RefValue {
@@ -107,7 +107,7 @@ impl Sum<RefValue> for RefValue {
     {
         let result = iter.collect::<Vec<RefValue>>();
         let sum = result.iter().map( |rv| rv.get_data()).sum();
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: sum,
@@ -126,7 +126,7 @@ impl IterMax for RefValue {
     {
         let result = iter.collect::<Vec<RefValue>>();
         let max = result.iter().map( |rv| rv.get_data() ).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: max,
@@ -141,16 +141,16 @@ impl IterMax for RefValue {
 // Getters and setters
 impl RefValue {
     pub fn get_type(&self) -> Op {
-        return self.borrow().op
+        self.borrow().op
     }
     pub fn get_data(&self) -> f64 {
-        return self.borrow().data
+        self.borrow().data
     }
     pub fn set_data(&self, x: f64) {
         self.borrow_mut().data = x
     }
     pub fn get_grad(&self) -> f64 {
-        return self.borrow().grad.curr_grad
+        self.borrow().grad.curr_grad
     }
     // pub fn get_batch_grad(&self) -> f64 {
     //     return self.borrow().grad.batch_grad
@@ -161,7 +161,7 @@ impl RefValue {
 impl RefValue {
 
     pub fn pow(&self, n: RefValue) -> RefValue {
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.powf(n.get_data()),
@@ -173,7 +173,7 @@ impl RefValue {
     }
 
     pub fn exp(&self) -> RefValue {
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.exp(),
@@ -185,7 +185,7 @@ impl RefValue {
     }
 
     pub fn log(&self) -> RefValue {
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.ln(),
@@ -197,7 +197,7 @@ impl RefValue {
     }
 
     pub fn relu(&self) -> RefValue {
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: if self.borrow().data < 0.0 { 0.0 } else { self.borrow().data },
@@ -209,7 +209,7 @@ impl RefValue {
     }
 
     pub fn tanh(&self) -> RefValue {
-        return RefValue(Rc::new(RefCell::new(
+        RefValue(Rc::new(RefCell::new(
             Value {
                 id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
                 data: self.borrow().data.tanh(),
@@ -238,7 +238,7 @@ impl RefValue {
         let batch_grad = self.borrow_mut().grad.batch_grad;
         self.borrow_mut().grad.curr_grad = 0.0;
         self.borrow_mut().grad.batch_grad = 0.0;
-        return - rate * batch_grad
+        - rate * batch_grad
     }
 
     fn evaluate_forward(&self) {
@@ -402,7 +402,7 @@ pub fn topological_sort(root: RefValue) -> Vec<RefValue> {
         result.push(value.clone())
     }
     dfs(&mut result, &mut visited, root);
-    return result
+    result
 }
 
 pub fn forward(nodes: &Vec<RefValue>) {
