@@ -405,20 +405,20 @@ pub fn topological_sort(root: RefValue) -> Vec<RefValue> {
     result
 }
 
-pub fn forward(nodes: &Vec<RefValue>) {
+pub fn forward(nodes: &[RefValue]) {
     for node in nodes.iter() {
         node.evaluate_forward();
     }
 }
 
-pub fn backward(root: RefValue, nodes: &Vec<RefValue>) {
+pub fn backward(root: RefValue, nodes: &[RefValue]) {
     root.borrow_mut().grad.curr_grad = 1.0;
     for node in nodes.iter().rev() {
         node.evaluate_backward();
     }
 }
 
-pub fn update_weights(variables: &Vec<RefValue>, rate: f64) {
+pub fn update_weights(variables: &[RefValue], rate: f64) {
     for var in variables.iter() {
         let update = var.discharge_grads(rate);
         var.borrow_mut().data += update;

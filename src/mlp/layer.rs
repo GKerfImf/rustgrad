@@ -51,14 +51,19 @@ impl LayerBuilder {
 
         for i in self.ins.iter() {
             let out = match nonlinearity {
-                NonLinearity::None => { panic!("Non-linearity cannot be None!") },
+                NonLinearity::None => panic!("Non-linearity cannot be None!"),
                 NonLinearity::ReLu => i.relu(),
-                NonLinearity::Tanh => i.tanh()
+                NonLinearity::Tanh => i.tanh(),
             };
             outs.push(out);
         }
 
-        Layer { ins: self.ins.clone(), outs: outs, neurons: vec![], parameters: vec![] }
+        Layer {
+            ins: self.ins.clone(),
+            outs,
+            neurons: vec![],
+            parameters: vec![],
+        }
     }
 
     fn softmax_layer(&self) -> Layer {
@@ -74,7 +79,12 @@ impl LayerBuilder {
             let out = i.exp() * exp_sum_inv.clone();
             outs.push(out);
         }
-        Layer { ins: self.ins.clone(), outs: outs, neurons: vec![], parameters: vec![] }
+        Layer {
+            ins: self.ins.clone(),
+            outs,
+            neurons: vec![],
+            parameters: vec![],
+        }
     }
 
     fn fully_connected_layer(&self, nout: u32) -> Layer {
@@ -98,7 +108,7 @@ impl LayerBuilder {
         let params = neurons.iter().flat_map( |n| n.get_parameters() )
             .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
 
-        Layer { ins: self.ins.clone(), outs: outs, neurons: neurons, parameters: params }
+        Layer { ins: self.ins.clone(), outs, neurons, parameters: params }
     }
 
     pub fn build(&mut self) -> Layer {
@@ -131,11 +141,11 @@ impl Layer {
     }
 
     pub fn get_parameters(&self) -> Iter<RefValue> {
-        return self.parameters.iter()
+        self.parameters.iter()
     }
 
     pub fn get_out_variables(&self) -> Vec<RefValue> {
-        return self.outs.clone()
+        self.outs.clone()
     }
 
 }
@@ -145,7 +155,7 @@ impl fmt::Display for Layer {
         for n in 0..self.neurons.len() {
             write!(f, "{}", self.neurons[n])?;
         }
-        return Ok(())
+        Ok(())
     }
 }
 

@@ -131,17 +131,17 @@ impl Loss {
 
     pub fn new(mlp: &MLP) -> LossBuilder {
         LossBuilder {
-            mlp: mlp,
+            mlp,
             loss_spec: None,
             reg_spec: None
         }
     }
 
     pub fn get_loss(&self) -> f64 {
-        return self.loss.get_data()
+        self.loss.get_data()
     }
 
-    fn compute_grads(&self, xs: &Vec<f64>, ys: &Vec<f64>) {
+    fn compute_grads(&self, xs: &[f64], ys: &[f64]) {
         // Update input variables
         for (i,x) in self.ins.iter().zip(xs.iter()) {
             i.set_data(*x)
@@ -175,7 +175,7 @@ impl Loss {
             self.compute_grads(&xss[i], &yss[i]);
         }
         mlp.update_weights(rate / batch_size as f64);
-        return self.get_loss()
+        self.get_loss()
     }
 
 }
@@ -204,14 +204,14 @@ mod tests {
         fn one_hot(x: f64) -> Vec<f64> {
             let mut v = vec![0.0; 10];
             v[x as usize] = 1.0;
-            return v
+            v
         }
 
         fn relative_error(a: f64, b: f64) -> f64 {
             if a == 0.0 && b == 0.0 {
-                return 0.0
+                0.0
             } else {
-                return (a - b).abs() / (a.abs()).max(b.abs())
+                (a - b).abs() / (a.abs()).max(b.abs())
             }
         }
 

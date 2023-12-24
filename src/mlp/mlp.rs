@@ -50,7 +50,7 @@ impl MPLBuilder {
         let uni_out = outs.clone().iter().map( |i| i.clone() ).sum::<RefValue>();
         let top_sort = topological_sort(uni_out.clone());
 
-        MLP { ins: ins, outs: outs, layers: layers, uni_out: uni_out, top_sort: top_sort }
+        MLP { ins, outs, layers, uni_out, top_sort }
     }
 
 }
@@ -59,7 +59,7 @@ impl MLP {
 
     pub fn new(nins: u32) -> MPLBuilder {
         MPLBuilder {
-            nins: nins,
+            nins,
             spec: vec![],
         }
     }
@@ -69,28 +69,28 @@ impl MLP {
             l.update_weights(rate)
         }
     }
-    
+
     pub fn get_parameters(&self) -> Vec<RefValue> {
         self.layers.iter().flat_map( |l| l.get_parameters() )
                 .map( |rv| rv.clone() ).collect::<Vec<RefValue>>()
     }
 
-    fn forward(&self, xs: &Vec<f64>) { 
-        if xs.len() != self.ins.len() { 
+    fn forward(&self, xs: &Vec<f64>) {
+        if xs.len() != self.ins.len() {
             panic!("Number of inputs does not match!")
         }
         // Update input variables
-        for (i,x) in self.ins.iter().zip(xs.iter()) { 
+        for (i,x) in self.ins.iter().zip(xs.iter()) {
             i.set_data(*x)
         }
         forward(&self.top_sort)
     }
-    pub fn eval(&self, xs: &Vec<f64>) -> Vec<f64> { 
+    pub fn eval(&self, xs: &Vec<f64>) -> Vec<f64> {
         self.forward(xs);
         self.outs.iter().map( |rv| rv.get_data() ).collect()
     }
 
-    fn backward(&self) { 
+    fn backward(&self) {
         backward(self.uni_out.clone(), &self.top_sort)
     }
 }
@@ -98,18 +98,18 @@ impl MLP {
 impl fmt::Display for MLP {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-        write!(f, "================================================================\n")?;
-        write!(f, "=                         State of MLP                         =\n")?;
-        write!(f, "================================================================\n")?;
+        writeln!(f, "================================================================")?;
+        writeln!(f, "=                         State of MLP                         =")?;
+        writeln!(f, "================================================================")?;
 
         // Print [ins]
-        write!(f, "Inputs:\n")?;
+        writeln!(f, "Inputs:")?;
         for i in self.ins.iter() { 
-            write!(f, " [{val:>8.3}]\n", val=i.get_data())?;
+            writeln!(f, " [{val:>8.3}]", val=i.get_data())?;
         }
         writeln!(f)?;
 
-        write!(f, "Weights:\n")?;
+        writeln!(f, "Weights:")?;
         for l in self.layers.iter() {
             write!(f, "{}", l)?;
             writeln!(f)?;
@@ -117,11 +117,11 @@ impl fmt::Display for MLP {
         writeln!(f)?;
 
         // Print [outs]
-        write!(f, "Outputs:\n")?;
+        writeln!(f, "Outputs:")?;
         for o in self.outs.iter() { 
-            write!(f, " [{name:>8.3}]\n", name=o.get_data())?;
+            writeln!(f, " [{name:>8.3}]", name=o.get_data())?;
         }
-        return Ok(())
+        Ok(())
     }
 }
 

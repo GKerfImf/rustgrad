@@ -1,8 +1,9 @@
 use std::fmt;
 use std::clone::Clone;
 
-#[derive(Debug,PartialEq,Clone,Copy)]
+#[derive(Debug,Default,PartialEq,Clone,Copy)]
 pub enum Op {
+    #[default]
     Leaf,
     Exp,
     Log,
@@ -28,8 +29,4 @@ impl fmt::Display for Op {
             Op::Max => { write!(f, "Max") }
         }
     }
-}
-
-impl Default for Op {
-    fn default() -> Self { Op::Leaf }
 }

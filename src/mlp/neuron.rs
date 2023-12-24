@@ -103,7 +103,7 @@ impl fmt::Display for Neuron {
         }
         write!(f,"]")?;
         write!(f, " + ({val:>8.3}) ", val=self.b.get_data())?;
-        write!(f, " ==> {val:>8.3} \n", val=self.get_output_variable().get_data())?;
+        writeln!(f, " ==> {val:>8.3} ", val=self.get_output_variable().get_data())?;
 
         Ok(())
     }

@@ -18,12 +18,10 @@ use std::io::{self, Write};
 
 fn simple_plot() {
     let mut rng = rand::thread_rng();
-    let mut generate_circle = |x_sh: f64, y_sh: f64, r_sm: f64, r_lr: f64| { 
-        loop { 
-            let r = r_sm + (r_lr - r_sm) * rng.gen::<f64>().sqrt();
-            let theta = 2.0 * PI * rng.gen::<f64>();
-            return (x_sh + r * theta.cos(), y_sh + r * theta.sin())
-        }
+    let mut generate_circle = |x_sh: f64, y_sh: f64, r_sm: f64, r_lr: f64| {
+        let r = r_sm + (r_lr - r_sm) * rng.gen::<f64>().sqrt();
+        let theta = 2.0 * PI * rng.gen::<f64>();
+        (x_sh + r * theta.cos(), y_sh + r * theta.sin())
     };
 
 
@@ -82,7 +80,7 @@ fn simple_plot() {
             .map( |(xs,ys)|  mlp.eval(&vec![xs[0], xs[1]])[0] * ys[0] )
             .filter( |y| y >= &0.0 )
             .count() as f64 / ((n1 + n2 + m1 + m2) as f64);
-        print!("[{:>6.3} accuracy at {:>3}'th iteration ]\n", acc, { iterations += 1; iterations }); 
+        println!("[{:>6.3} accuracy at {:>3}'th iteration ]", acc, { iterations += 1; iterations }); 
         io::stdout().flush().unwrap();
     }
 
