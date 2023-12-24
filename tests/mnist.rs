@@ -11,7 +11,7 @@ mod tests {
         use rustgrad::core::nonlinearity::NonLinearity::*;
         use rustgrad::mlp::layer::LayerSpec::*;
         use rustgrad::mlp::mlp::MLP;
-        use rustgrad::mlp::loss::Loss;
+        use rustgrad::mlp::loss::{Loss, LossSpec};
 
         #[test]
         #[ignore]
@@ -19,6 +19,7 @@ mod tests {
         // [cargo test mnist_full_scale --release -- --nocapture --ignored]
         fn mnist_full_scale() {
             // TODO: remove some duplication
+            const TRAIN_ITER: i32 = 5_000; // 20 sec per 1k
 
             let train = 45_000;
             let dev = 5_000;
@@ -82,10 +83,10 @@ mod tests {
                     .add_layer(NonLinear(ReLu))
                     .add_layer(FullyConnected(10))
                     .build();
-            let loss = Loss::with_multi_class_hinge_loss(&mlp);
+            let loss = Loss::new(&mlp).add_loss(LossSpec::MultiHinge).build();
 
             println!("Training the model...");
-            for i in 0..250_000 {
+            for i in 0..TRAIN_ITER {
                 print!("\rLoss = {:.8}, \t Iter = {}", loss.rand_batch_train(&mlp, &x_train, &y_train, 64, 0.2), i);
                 io::stdout().flush().unwrap();
             }

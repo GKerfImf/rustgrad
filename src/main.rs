@@ -3,7 +3,7 @@
 
 use rustgrad::mlp::layer::LayerSpec::*;
 use rustgrad::mlp::mlp::MLP;
-use rustgrad::mlp::loss::Loss;
+use rustgrad::mlp::loss::{Loss, LossSpec};
 use rustgrad::core::nonlinearity::NonLinearity::{Tanh, ReLu};
 
 
@@ -62,14 +62,16 @@ fn simple_plot() {
     //                                  Train the MLP                                  //
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 
-    let mlp =
+    let mlp = 
         MLP::new(2)
         .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
         .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
         .add_layer(FullyConnected(1))
         .build();
 
-    let loss = Loss::with_binary_hinge_loss(&mlp);
+    let loss = Loss::new(&mlp).add_loss(LossSpec::BinaryHinge).build();
+
+    // Loss::with_binary_hinge_loss(&mlp);
 
     let mut iterations = 0;
     let mut acc = 0.0;
