@@ -1,12 +1,12 @@
-use std::{cell::RefCell, rc::Rc};
-use std::collections::HashSet;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::ops::{Add,Sub,Mul,Deref};
 use std::clone::Clone;
+use std::collections::HashSet;
 use std::iter::Sum;
+use std::ops::{Add, Deref, Mul, Sub};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::{cell::RefCell, rc::Rc};
 
-use crate::util::itermax::IterMax;
 use crate::core::op::Op;
+use crate::util::itermax::IterMax;
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 //                                      Grad                                       //
@@ -15,11 +15,16 @@ use crate::core::op::Op;
 #[derive(Debug)]
 struct Grad {
     curr_grad: f64,
-    batch_grad: f64
+    batch_grad: f64,
 }
 
 impl Default for Grad {
-    fn default() -> Self { Grad { curr_grad: 0.0, batch_grad: 0.0 } }
+    fn default() -> Self {
+        Grad {
+            curr_grad: 0.0,
+            batch_grad: 0.0,
+        }
+    }
 }
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
@@ -30,7 +35,7 @@ impl Default for Grad {
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 // https://github.com/nrc/r4cppp/blob/master/graphs/src/rc_graph.rs
-#[derive(Default,Debug)]
+#[derive(Default, Debug)]
 pub struct Value {
     id: u64,
     data: f64,
@@ -54,43 +59,37 @@ impl Clone for RefValue {
 }
 impl Value {
     pub fn new(data: f64) -> RefValue {
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data,
-                ..Default::default()
-            }
-        )))
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data,
+            ..Default::default()
+        })))
     }
 }
 impl Add for RefValue {
     type Output = RefValue;
 
-    fn add(self, other: RefValue) -> RefValue{
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: self.borrow().data + other.borrow().data,
-                op: Op::Add,
-                children: vec![self.clone(), other.clone()],
-                ..Default::default()
-            }
-        )))
+    fn add(self, other: RefValue) -> RefValue {
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: self.borrow().data + other.borrow().data,
+            op: Op::Add,
+            children: vec![self.clone(), other.clone()],
+            ..Default::default()
+        })))
     }
 }
 impl Mul for RefValue {
     type Output = RefValue;
 
-    fn mul(self, other: RefValue) -> RefValue{
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: self.borrow().data * other.borrow().data,
-                op: Op::Mul,
-                children: vec![self.clone(), other.clone()],
-                ..Default::default()
-            }
-        )))
+    fn mul(self, other: RefValue) -> RefValue {
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: self.borrow().data * other.borrow().data,
+            op: Op::Mul,
+            children: vec![self.clone(), other.clone()],
+            ..Default::default()
+        })))
     }
 }
 impl Sub for RefValue {
@@ -106,16 +105,14 @@ impl Sum<RefValue> for RefValue {
         I: Iterator<Item = RefValue>,
     {
         let result = iter.collect::<Vec<RefValue>>();
-        let sum = result.iter().map( |rv| rv.get_data()).sum();
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: sum,
-                op: Op::Add,
-                children: result,
-                ..Default::default()
-            }
-        )))
+        let sum = result.iter().map(|rv| rv.get_data()).sum();
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: sum,
+            op: Op::Add,
+            children: result,
+            ..Default::default()
+        })))
     }
 }
 
@@ -125,16 +122,18 @@ impl IterMax for RefValue {
         I: Iterator<Item = RefValue>,
     {
         let result = iter.collect::<Vec<RefValue>>();
-        let max = result.iter().map( |rv| rv.get_data() ).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: max,
-                op: Op::Max,
-                children: result,
-                ..Default::default()
-            }
-        )))
+        let max = result
+            .iter()
+            .map(|rv| rv.get_data())
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: max,
+            op: Op::Max,
+            children: result,
+            ..Default::default()
+        })))
     }
 }
 
@@ -159,72 +158,63 @@ impl RefValue {
 
 // Operations on RefValue
 impl RefValue {
-
     pub fn pow(&self, n: RefValue) -> RefValue {
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: self.borrow().data.powf(n.get_data()),
-                op: Op::Pow,
-                children: vec![self.clone(),n.clone()],
-                ..Default::default()
-            }
-        )))
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: self.borrow().data.powf(n.get_data()),
+            op: Op::Pow,
+            children: vec![self.clone(), n.clone()],
+            ..Default::default()
+        })))
     }
 
     pub fn exp(&self) -> RefValue {
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: self.borrow().data.exp(),
-                op: Op::Exp,
-                children: vec![self.clone()],
-                ..Default::default()
-            }
-        )))
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: self.borrow().data.exp(),
+            op: Op::Exp,
+            children: vec![self.clone()],
+            ..Default::default()
+        })))
     }
 
     pub fn log(&self) -> RefValue {
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: self.borrow().data.ln(),
-                op: Op::Log,
-                children: vec![self.clone()],
-                ..Default::default()
-            }
-        )))
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: self.borrow().data.ln(),
+            op: Op::Log,
+            children: vec![self.clone()],
+            ..Default::default()
+        })))
     }
 
     pub fn relu(&self) -> RefValue {
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: if self.borrow().data < 0.0 { 0.0 } else { self.borrow().data },
-                op: Op::ReLu,
-                children: vec![self.clone()],
-                ..Default::default()
-            }
-        )))
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: if self.borrow().data < 0.0 {
+                0.0
+            } else {
+                self.borrow().data
+            },
+            op: Op::ReLu,
+            children: vec![self.clone()],
+            ..Default::default()
+        })))
     }
 
     pub fn tanh(&self) -> RefValue {
-        RefValue(Rc::new(RefCell::new(
-            Value {
-                id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-                data: self.borrow().data.tanh(),
-                op: Op::Tanh,
-                children: vec![self.clone()],
-                ..Default::default()
-            }
-        )))
+        RefValue(Rc::new(RefCell::new(Value {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            data: self.borrow().data.tanh(),
+            op: Op::Tanh,
+            children: vec![self.clone()],
+            ..Default::default()
+        })))
     }
-
 }
 
 // Forward and backward pass
 impl RefValue {
-
     fn accumulate_grads(&self, grad: f64) {
         self.borrow_mut().grad.curr_grad += grad;
         self.borrow_mut().grad.batch_grad += grad;
@@ -238,7 +228,7 @@ impl RefValue {
         let batch_grad = self.borrow_mut().grad.batch_grad;
         self.borrow_mut().grad.curr_grad = 0.0;
         self.borrow_mut().grad.batch_grad = 0.0;
-        - rate * batch_grad
+        -rate * batch_grad
     }
 
     fn evaluate_forward(&self) {
@@ -246,7 +236,7 @@ impl RefValue {
         self.reset_grad();
 
         match op {
-            Op::Leaf => { }
+            Op::Leaf => {}
             Op::Exp => {
                 let data = self.borrow().children[0].borrow().data;
                 self.borrow_mut().data = data.exp();
@@ -261,7 +251,7 @@ impl RefValue {
                 self.borrow_mut().data = l_data.powf(r_data);
             }
             Op::Add => {
-                let sum = self.borrow().children.iter().map( |rv| rv.get_data() ).sum();
+                let sum = self.borrow().children.iter().map(|rv| rv.get_data()).sum();
                 self.borrow_mut().data = sum;
             }
             Op::Mul => {
@@ -278,8 +268,13 @@ impl RefValue {
                 self.borrow_mut().data = data.tanh();
             }
             Op::Max => {
-                let max = self.borrow().children.iter().map( |rv| rv.get_data() )
-                    .max_by( |a, b| a.partial_cmp(b).unwrap() ).unwrap();
+                let max = self
+                    .borrow()
+                    .children
+                    .iter()
+                    .map(|rv| rv.get_data())
+                    .max_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap();
                 self.borrow_mut().data = max;
             }
         }
@@ -287,12 +282,14 @@ impl RefValue {
 
     fn evaluate_backward(&self) {
         // Don't propagate if the gradient is zero
-        if self.borrow().grad.curr_grad == 0.0 { return }
+        if self.borrow().grad.curr_grad == 0.0 {
+            return;
+        }
 
         match self.borrow().op {
             Op::Leaf => {
                 // Leaf nodes don't have any children, so there's nothing to do
-             }
+            }
             Op::Exp => {
                 //   d(f(exp(x)))/dx
                 // = d(f(exp(x)))/d(exp(x)) * d(exp(x))/dx
@@ -322,14 +319,18 @@ impl RefValue {
                 let grad = self.borrow().grad.curr_grad;
                 let l_data = self.borrow().children[0].borrow().data;
                 let r_data = self.borrow().children[1].borrow().data;
-                self.borrow().children[0].accumulate_grads(grad * r_data * l_data.powf(r_data - 1.0));
+                self.borrow().children[0]
+                    .accumulate_grads(grad * r_data * l_data.powf(r_data - 1.0));
             }
             Op::Add => {
                 //   d(f(Σ x_i))/ dx_i
                 // = d(f(Σ x_i))/d(Σ x_i) * d(Σ x_i)/dx_i
                 // =                 grad *        #{x_i}
                 let grad = self.borrow().grad.curr_grad;
-                self.borrow().children.iter().for_each( |rv| rv.accumulate_grads(grad) );
+                self.borrow()
+                    .children
+                    .iter()
+                    .for_each(|rv| rv.accumulate_grads(grad));
             }
             Op::Mul => {
                 //   d(f(a * b))/da
@@ -370,18 +371,20 @@ impl RefValue {
                 // = d(f(max(xs)))/d(max(xs)) *                   d(max(xs))/dx_i
                 // =                     grad * (if x_i == max(xs) then 1 else 0)
                 let grad = self.borrow().grad.curr_grad;
-                let max = self.borrow().children.iter().map( |rv| rv.get_data() )
-                    .max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-                self.borrow().children.iter().for_each( |rv|
-                    rv.accumulate_grads(
-                        if rv.get_data() == max { grad } else { 0.0 }
-                    )
-                );
+                let max = self
+                    .borrow()
+                    .children
+                    .iter()
+                    .map(|rv| rv.get_data())
+                    .max_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap();
+                self.borrow().children.iter().for_each(|rv| {
+                    rv.accumulate_grads(if rv.get_data() == max { grad } else { 0.0 })
+                });
             }
         }
     }
 }
-
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 //                                Propagation Utils                                //
@@ -393,7 +396,7 @@ pub fn topological_sort(root: RefValue) -> Vec<RefValue> {
 
     fn dfs(result: &mut Vec<RefValue>, visited: &mut HashSet<u64>, value: RefValue) {
         if visited.contains(&value.borrow().id) {
-            return
+            return;
         }
         visited.insert(value.borrow().id);
         for ch in value.borrow().children.iter() {
@@ -425,7 +428,6 @@ pub fn update_weights(variables: &[RefValue], rate: f64) {
     }
 }
 
-
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 //                                      Tests                                      //
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
@@ -435,10 +437,10 @@ mod tests {
 
     #[cfg(test)]
     mod value {
-        use rand::Rng;
-        use more_asserts as ma;
-        use crate::util::itermax::IterMaxExt;
         use crate::core::core::*;
+        use crate::util::itermax::IterMaxExt;
+        use more_asserts as ma;
+        use rand::Rng;
 
         #[test]
         fn basic() {
@@ -524,7 +526,7 @@ mod tests {
         #[test]
         fn mul_min() {
             let mut rng = rand::thread_rng();
-            let a = Value::new((rng.gen::<f64>() - 0.5)*100.0);
+            let a = Value::new((rng.gen::<f64>() - 0.5) * 100.0);
             let s = a.clone() * a.clone();
 
             let top_sort = topological_sort(s.clone());
@@ -536,7 +538,7 @@ mod tests {
                 forward(&top_sort);
 
                 let new_val = s.get_data();
-                ma::assert_le!(new_val, old_val);   // Value always decreases
+                ma::assert_le!(new_val, old_val); // Value always decreases
                 old_val = new_val;
             }
             ma::assert_le!(s.get_data(), 1e-6);
@@ -546,8 +548,8 @@ mod tests {
         fn squared_diff() {
             let mut rng = rand::thread_rng();
 
-            let a = Value::new((rng.gen::<f64>() - 0.5)*100.0);
-            let b = Value::new((rng.gen::<f64>() - 0.5)*100.0);
+            let a = Value::new((rng.gen::<f64>() - 0.5) * 100.0);
+            let b = Value::new((rng.gen::<f64>() - 0.5) * 100.0);
             let s = (a.clone() - b.clone()) * (a.clone() - b.clone());
 
             let top_sort = topological_sort(s.clone());
@@ -588,10 +590,12 @@ mod tests {
         #[test]
         fn max1() {
             let a = Value::new(-0.2);
-            let b = Value::new( 0.7);
-            let c = Value::new( 0.7);
-            let d = Value::new( 0.4);
-            let s : RefValue = vec![a.clone(), b.clone(), c.clone(), d.clone()].into_iter().iter_max();
+            let b = Value::new(0.7);
+            let c = Value::new(0.7);
+            let d = Value::new(0.4);
+            let s: RefValue = vec![a.clone(), b.clone(), c.clone(), d.clone()]
+                .into_iter()
+                .iter_max();
 
             let top_sort = topological_sort(s.clone());
 
@@ -650,14 +654,14 @@ mod tests {
 
         #[test]
         fn pow2() {
-            let a = Value::new( 7.0);
+            let a = Value::new(7.0);
             let n = Value::new(-1.0);
 
             let s = a.clone().pow(n.clone());
             let top_sort = topological_sort(s.clone());
 
             forward(&top_sort);
-            assert_eq!(s.get_data(),  0.14285714285714285);
+            assert_eq!(s.get_data(), 0.14285714285714285);
 
             backward(s.clone(), &top_sort);
             assert_eq!(a.get_grad(), -0.02040816326530612);
@@ -675,6 +679,5 @@ mod tests {
             backward(s.clone(), &top_sort);
             assert_eq!(a.get_grad(), 0.1);
         }
-
     }
 }

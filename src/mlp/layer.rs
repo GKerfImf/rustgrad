@@ -1,45 +1,41 @@
 #![allow(dead_code)]
 
-use core::slice::Iter;
-use crate::core::nonlinearity::NonLinearity;
-use crate::core::core::{Value, RefValue};
 use crate::core::core::update_weights;
-use crate::util::itermax::IterMaxExt;
+use crate::core::core::{RefValue, Value};
+use crate::core::nonlinearity::NonLinearity;
 use crate::mlp::neuron::Neuron;
+use crate::util::itermax::IterMaxExt;
+use core::slice::Iter;
 use std::fmt;
-
-
 
 #[derive(Debug, Copy, Clone)]
 pub enum LayerSpec {
     FullyConnected(u32),
     NonLinear(NonLinearity),
-    SoftMax
+    SoftMax,
 }
-
 
 #[derive(Debug)]
 pub struct Layer {
-    ins: Vec<RefValue>,             // Input variables
-    outs: Vec<RefValue>,            // Output variables
-    neurons: Vec<Neuron>,           // Neurons
-    parameters: Vec<RefValue>       // All parameters
+    ins: Vec<RefValue>,        // Input variables
+    outs: Vec<RefValue>,       // Output variables
+    neurons: Vec<Neuron>,      // Neurons
+    parameters: Vec<RefValue>, // All parameters
 }
 
 pub struct LayerBuilder {
     ins: Vec<RefValue>,
     spec: LayerSpec,
-    params: Option<Vec<Vec<f64>>>
+    params: Option<Vec<Vec<f64>>>,
 }
 
 impl LayerBuilder {
-
     fn set_params(&mut self, params: Vec<Vec<f64>>) -> &mut Self {
         match self.spec {
             LayerSpec::FullyConnected(_) => {
                 self.params = Some(params);
                 self
-            },
+            }
             _ => {
                 panic!("Parameters can be set only for fully connected layer!");
             }
@@ -67,10 +63,10 @@ impl LayerBuilder {
     }
 
     fn softmax_layer(&self) -> Layer {
-        let max : RefValue = self.ins.clone().into_iter().iter_max();
-        let small_ins = self.ins.iter().map( |i| i.clone() - max.clone() );
+        let max: RefValue = self.ins.clone().into_iter().iter_max();
+        let small_ins = self.ins.iter().map(|i| i.clone() - max.clone());
 
-        let exps = small_ins.clone().map( |i| i.exp() );
+        let exps = small_ins.clone().map(|i| i.exp());
         let exp_sum = exps.clone().sum::<RefValue>();
         let exp_sum_inv = exp_sum.pow(Value::new(-1.0));
 
@@ -105,34 +101,35 @@ impl LayerBuilder {
             }
         }
 
-        let params = neurons.iter().flat_map( |n| n.get_parameters() )
-            .map( |rv| rv.clone() ).collect::<Vec<RefValue>>();
+        let params = neurons
+            .iter()
+            .flat_map(|n| n.get_parameters())
+            .map(|rv| rv.clone())
+            .collect::<Vec<RefValue>>();
 
-        Layer { ins: self.ins.clone(), outs, neurons, parameters: params }
+        Layer {
+            ins: self.ins.clone(),
+            outs,
+            neurons,
+            parameters: params,
+        }
     }
 
     pub fn build(&mut self) -> Layer {
         match self.spec {
-            LayerSpec::NonLinear(nonlin) => {
-                self.nonlinear_layer(nonlin)
-            },
-            LayerSpec::SoftMax => {
-                self.softmax_layer()
-            },
-            LayerSpec::FullyConnected(nout) => {
-                self.fully_connected_layer(nout)
-            }
+            LayerSpec::NonLinear(nonlin) => self.nonlinear_layer(nonlin),
+            LayerSpec::SoftMax => self.softmax_layer(),
+            LayerSpec::FullyConnected(nout) => self.fully_connected_layer(nout),
         }
     }
 }
 
 impl Layer {
-
     pub fn new(ins: Vec<RefValue>, spec: LayerSpec) -> LayerBuilder {
         LayerBuilder {
             ins,
             spec,
-            params: None
+            params: None,
         }
     }
 
@@ -147,7 +144,6 @@ impl Layer {
     pub fn get_out_variables(&self) -> Vec<RefValue> {
         self.outs.clone()
     }
-
 }
 
 impl fmt::Display for Layer {
@@ -158,7 +154,6 @@ impl fmt::Display for Layer {
         Ok(())
     }
 }
-
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 //                                      Tests                                      //
@@ -175,17 +170,16 @@ mod tests {
         #[test]
         fn basic() {
             let a = Value::new(-1.0);
-            let b = Value::new( 1.0);
-            let l = Layer::new(
-                vec![a,b], LayerSpec::FullyConnected(3)
-                ).set_params(vec![
+            let b = Value::new(1.0);
+            let l = Layer::new(vec![a, b], LayerSpec::FullyConnected(3))
+                .set_params(vec![
                     vec![0.0, 5.0, 2.0],
                     vec![1.0, 3.0, 3.0],
                     vec![2.0, 1.0, 4.0],
-                ]).build();
+                ])
+                .build();
 
-
-            let o = l.outs.clone().iter().map( |i| i.clone() ).sum::<RefValue>();
+            let o = l.outs.clone().iter().map(|i| i.clone()).sum::<RefValue>();
 
             let top_sort = topological_sort(o.clone());
             forward(&top_sort);
@@ -196,27 +190,33 @@ mod tests {
         #[test]
         fn softmax1() {
             let a = Value::new(-1.0);
-            let b = Value::new( 1.0);
-            let c = Value::new( 2.0);
-            let d = Value::new( 0.5);
+            let b = Value::new(1.0);
+            let c = Value::new(2.0);
+            let d = Value::new(0.5);
             let l = Layer::new(
-                    vec![a.clone(),b.clone(),c.clone(),d.clone()],
-                    LayerSpec::SoftMax
-                ).build();
+                vec![a.clone(), b.clone(), c.clone(), d.clone()],
+                LayerSpec::SoftMax,
+            )
+            .build();
             let o = l.outs[2].clone();
 
             let top_sort = topological_sort(o.clone());
             forward(&top_sort);
-            assert_eq!(vec![0.03034322855941622, 0.2242078180482011, 0.609460037598877, 0.1359889157935055],
-                l.outs.iter().map( |i| i.get_data() ).collect::<Vec<f64>>()
+            assert_eq!(
+                vec![
+                    0.03034322855941622,
+                    0.2242078180482011,
+                    0.609460037598877,
+                    0.1359889157935055
+                ],
+                l.outs.iter().map(|i| i.get_data()).collect::<Vec<f64>>()
             );
 
             backward(o.clone(), &top_sort);
             assert_eq!(a.get_grad(), -0.01849298521869313); // 0.030 * (0 - 0.609) = -0.018
             assert_eq!(b.get_grad(), -0.13664570521761885); // 0.224 * (0 - 0.609) = -0.136
-            assert_eq!(c.get_grad(),  0.2380185001688524 ); // 0.609 * (1 - 0.609) =  0.238
+            assert_eq!(c.get_grad(), 0.2380185001688524); // 0.609 * (1 - 0.609) =  0.238
             assert_eq!(d.get_grad(), -0.08287980973254037); // 0.135 * (0 - 0.609) = -0.082
         }
-
     }
 }

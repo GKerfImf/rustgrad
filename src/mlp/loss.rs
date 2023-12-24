@@ -1,10 +1,10 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-use rand::Rng;
-use rand_distr::Distribution;
 use crate::core::core::*;
 use crate::mlp::mlp::MLP;
+use rand::Rng;
+use rand_distr::Distribution;
 
 pub enum LossSpec {
     CrossEntropy,
@@ -14,38 +14,43 @@ pub enum LossSpec {
 }
 
 pub enum RegSpec {
-    L2(f64)
+    L2(f64),
 }
 
 #[derive(Debug)]
 pub struct Loss {
-    ins: Vec<RefValue>,         // Input variables
+    ins: Vec<RefValue>, // Input variables
 
-    mlp_outs: Vec<RefValue>,    // Output produced by MLP
-    exp_outs: Vec<RefValue>,    // Expected output
-    pub loss: RefValue,         //
+    mlp_outs: Vec<RefValue>, // Output produced by MLP
+    exp_outs: Vec<RefValue>, // Expected output
+    pub loss: RefValue,      //
 
-    top_sort: Vec<RefValue>     //
+    top_sort: Vec<RefValue>, //
 }
 
 pub struct LossBuilder<'a> {
     mlp: &'a MLP,
     loss_spec: Option<LossSpec>,
-    reg_spec: Option<RegSpec>
+    reg_spec: Option<RegSpec>,
 }
 
-
-impl <'a> LossBuilder<'_> {
-
+impl<'a> LossBuilder<'_> {
     fn cross_entropy_loss(&self, exp_outs: Vec<RefValue>) -> RefValue {
-        self.mlp.outs.iter().zip(exp_outs.iter())
-            .map( |(sci,yi)| yi.clone() * sci.clone().log() )
-            .sum::<RefValue>() * Value::new(-1.0)
+        self.mlp
+            .outs
+            .iter()
+            .zip(exp_outs.iter())
+            .map(|(sci, yi)| yi.clone() * sci.clone().log())
+            .sum::<RefValue>()
+            * Value::new(-1.0)
     }
 
     fn with_binary_hinge_loss(&self, exp_outs: Vec<RefValue>) -> RefValue {
-        self.mlp.outs.iter().zip(exp_outs.iter())
-            .map( |(sci,yi)| (Value::new(-1.0) * sci.clone() * yi.clone() + Value::new(1.0)).relu() )
+        self.mlp
+            .outs
+            .iter()
+            .zip(exp_outs.iter())
+            .map(|(sci, yi)| (Value::new(-1.0) * sci.clone() * yi.clone() + Value::new(1.0)).relu())
             .sum::<RefValue>()
     }
 
@@ -53,20 +58,33 @@ impl <'a> LossBuilder<'_> {
         // Assuming that expected outputs is a vector of 0s and 1s,
         // [o_star = oi * yi for (oi,yi) in zip(mlp.outs, exp_outs)]
         // is the value that [mlp] assignes to the correct class.
-        let o_star = self.mlp.outs.iter().zip(exp_outs.iter())
-            .map( |(oi,yi)| oi.clone() * yi.clone() ).sum::<RefValue>();
+        let o_star = self
+            .mlp
+            .outs
+            .iter()
+            .zip(exp_outs.iter())
+            .map(|(oi, yi)| oi.clone() * yi.clone())
+            .sum::<RefValue>();
 
         // Term [1 - yi] allows to filter the correct class from the sum.
         // Term [max(0, 1 + oi - o_star)] is a standard multi-class hinge loss.
-       self.mlp.outs.iter().zip(exp_outs.iter())
-            .map( |(oi,yi)|
-                (Value::new(1.0) - yi.clone()) * (Value::new(1.0) + oi.clone() - o_star.clone()).relu()
-            ).sum::<RefValue>()
+        self.mlp
+            .outs
+            .iter()
+            .zip(exp_outs.iter())
+            .map(|(oi, yi)| {
+                (Value::new(1.0) - yi.clone())
+                    * (Value::new(1.0) + oi.clone() - o_star.clone()).relu()
+            })
+            .sum::<RefValue>()
     }
 
     fn with_squared_loss(&self, exp_outs: Vec<RefValue>) -> RefValue {
-        self.mlp.outs.iter().zip(exp_outs.iter())
-            .map( |(sci,yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()) )
+        self.mlp
+            .outs
+            .iter()
+            .zip(exp_outs.iter())
+            .map(|(sci, yi)| (sci.clone() - yi.clone()) * (sci.clone() - yi.clone()))
             .sum::<RefValue>()
     }
 
@@ -118,22 +136,21 @@ impl <'a> LossBuilder<'_> {
         let loss = data_loss + reg_loss;
 
         Loss {
-            ins:        self.mlp.ins.clone(),
-            mlp_outs:   self.mlp.outs.clone(),
-            exp_outs:   exp_outs,
-            loss:       loss.clone(),
-            top_sort:   topological_sort(loss)
+            ins: self.mlp.ins.clone(),
+            mlp_outs: self.mlp.outs.clone(),
+            exp_outs: exp_outs,
+            loss: loss.clone(),
+            top_sort: topological_sort(loss),
         }
     }
 }
 
 impl Loss {
-
     pub fn new(mlp: &MLP) -> LossBuilder {
         LossBuilder {
             mlp,
             loss_spec: None,
-            reg_spec: None
+            reg_spec: None,
         }
     }
 
@@ -143,18 +160,25 @@ impl Loss {
 
     fn compute_grads(&self, xs: &[f64], ys: &[f64]) {
         // Update input variables
-        for (i,x) in self.ins.iter().zip(xs.iter()) {
+        for (i, x) in self.ins.iter().zip(xs.iter()) {
             i.set_data(*x)
         }
         // Update output variables
-        for (o,y) in self.exp_outs.iter().zip(ys.iter()) {
+        for (o, y) in self.exp_outs.iter().zip(ys.iter()) {
             o.set_data(*y)
         }
         forward(&self.top_sort);
         backward(self.loss.clone(), &self.top_sort);
     }
 
-    pub fn rand_batch_train(&self, mlp: &MLP, xss: &Vec<Vec<f64>>, yss: &Vec<Vec<f64>>, batch_size: u64, rate: f64) -> f64 {
+    pub fn rand_batch_train(
+        &self,
+        mlp: &MLP,
+        xss: &Vec<Vec<f64>>,
+        yss: &Vec<Vec<f64>>,
+        batch_size: u64,
+        rate: f64,
+    ) -> f64 {
         if xss.len() != yss.len() {
             panic!("Number of inputs and outputs examples do not match!")
         }
@@ -177,7 +201,6 @@ impl Loss {
         mlp.update_weights(rate / batch_size as f64);
         self.get_loss()
     }
-
 }
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
@@ -194,10 +217,10 @@ mod tests {
         use crate::core::core::*;
         use crate::mlp::layer::*;
 
+        use crate::core::nonlinearity::NonLinearity::{ReLu, Tanh};
         use crate::mlp::layer::LayerSpec::*;
-        use crate::mlp::mlp::MLP;
         use crate::mlp::loss::{Loss, LossSpec};
-        use crate::core::nonlinearity::NonLinearity::{Tanh, ReLu};
+        use crate::mlp::mlp::MLP;
 
         // TODO: move to a separate module
         // TODO: remove duplication with tests::mnist::one_hot;
@@ -222,14 +245,14 @@ mod tests {
             for _ in 0..100 {
                 let nins = 1;
                 let nouts = 5;
-                let mlp =
-                    MLP::new(nins)
-                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
-                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
-                        .add_layer(FullyConnected(nouts))
-                        .build();
+                let mlp = MLP::new(nins)
+                    .add_layer(FullyConnected(16))
+                    .add_layer(NonLinear(ReLu))
+                    .add_layer(FullyConnected(16))
+                    .add_layer(NonLinear(ReLu))
+                    .add_layer(FullyConnected(nouts))
+                    .build();
                 let loss = Loss::new(&mlp).add_loss(LossSpec::MultiHinge).build();
-
 
                 let x = rng.gen::<f64>();
                 let y = one_hot(rng.gen_range(0..=nouts) as f64);
@@ -255,14 +278,17 @@ mod tests {
 
             for _ in 0..100 {
                 let nins = 1;
-                let mlp =
-                    MLP::new(nins)
-                        .add_layer(FullyConnected(2)).add_layer(NonLinear(ReLu))
-                        .add_layer(FullyConnected(4)).add_layer(NonLinear(Tanh))
-                        .add_layer(FullyConnected(8)).add_layer(NonLinear(ReLu))
-                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
-                        .add_layer(FullyConnected(1))
-                        .build();
+                let mlp = MLP::new(nins)
+                    .add_layer(FullyConnected(2))
+                    .add_layer(NonLinear(ReLu))
+                    .add_layer(FullyConnected(4))
+                    .add_layer(NonLinear(Tanh))
+                    .add_layer(FullyConnected(8))
+                    .add_layer(NonLinear(ReLu))
+                    .add_layer(FullyConnected(16))
+                    .add_layer(NonLinear(ReLu))
+                    .add_layer(FullyConnected(1))
+                    .build();
                 let loss = Loss::new(&mlp).add_loss(LossSpec::Squared).build();
 
                 let x = rng.gen::<f64>();
@@ -283,7 +309,6 @@ mod tests {
             }
         }
 
-
         #[test]
         fn with_cross_entropy_loss() {
             let mut rng = rand::thread_rng();
@@ -291,12 +316,14 @@ mod tests {
             for _ in 0..100 {
                 let nins = 1;
                 let nouts = 5;
-                let mlp =
-                    MLP::new(nins)
-                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
-                        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
-                        .add_layer(FullyConnected(nouts)).add_layer(SoftMax)
-                        .build();
+                let mlp = MLP::new(nins)
+                    .add_layer(FullyConnected(16))
+                    .add_layer(NonLinear(ReLu))
+                    .add_layer(FullyConnected(16))
+                    .add_layer(NonLinear(ReLu))
+                    .add_layer(FullyConnected(nouts))
+                    .add_layer(SoftMax)
+                    .build();
                 let loss = Loss::new(&mlp).add_loss(LossSpec::CrossEntropy).build();
 
                 let x = rng.gen::<f64>();
@@ -316,7 +343,5 @@ mod tests {
                 assert!(relative_error < 1e-6);
             }
         }
-
-
     }
 }

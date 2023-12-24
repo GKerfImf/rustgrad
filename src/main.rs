@@ -1,18 +1,17 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
+use rustgrad::core::nonlinearity::NonLinearity::{ReLu, Tanh};
 use rustgrad::mlp::layer::LayerSpec::*;
-use rustgrad::mlp::mlp::MLP;
 use rustgrad::mlp::loss::{Loss, LossSpec};
-use rustgrad::core::nonlinearity::NonLinearity::{Tanh, ReLu};
+use rustgrad::mlp::mlp::MLP;
 
-
-use rand::Rng;
-use plotly::{Contour, HeatMap, Layout, Plot, Scatter};
-use plotly::plot::ImageFormat;
-use plotly::common::{ColorScale, ColorScalePalette, Title, Mode, Marker};
 use plotly::common::color::{Color, NamedColor};
+use plotly::common::{ColorScale, ColorScalePalette, Marker, Mode, Title};
 use plotly::contour::Contours;
+use plotly::plot::ImageFormat;
+use plotly::{Contour, HeatMap, Layout, Plot, Scatter};
+use rand::Rng;
 use std::f64::consts::PI;
 use std::io::{self, Write};
 
@@ -24,7 +23,6 @@ fn simple_plot() {
         (x_sh + r * theta.cos(), y_sh + r * theta.sin())
     };
 
-
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     //                                 Generate Input                                  //
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
@@ -33,37 +31,38 @@ fn simple_plot() {
 
     let n1 = 100;
     for _ in 0..n1 {
-        let (x,y) = generate_circle(7.0, 0.0, 6.0, 6.0);
-        x_train.push(vec![x,y]);
+        let (x, y) = generate_circle(7.0, 0.0, 6.0, 6.0);
+        x_train.push(vec![x, y]);
         y_train.push(vec![-1.0]);
     }
     let n2 = 100;
     for _ in 0..n2 {
-        let (x,y) = generate_circle(-7.0, 0.0, 3.0, 3.0);
-        x_train.push(vec![x,y]);
+        let (x, y) = generate_circle(-7.0, 0.0, 3.0, 3.0);
+        x_train.push(vec![x, y]);
         y_train.push(vec![-1.0]);
     }
     let m1 = 100;
     for _ in 0..m1 {
-        let (x,y) = generate_circle(7.0, 0.0, 3.0, 3.0);
-        x_train.push(vec![x,y]);
+        let (x, y) = generate_circle(7.0, 0.0, 3.0, 3.0);
+        x_train.push(vec![x, y]);
         y_train.push(vec![1.0]);
     }
     let m2 = 100;
     for _ in 0..m2 {
-        let (x,y) = generate_circle(-7.0, 0.0, 6.0, 6.0);
-        x_train.push(vec![x,y]);
+        let (x, y) = generate_circle(-7.0, 0.0, 6.0, 6.0);
+        x_train.push(vec![x, y]);
         y_train.push(vec![1.0]);
     }
-   
+
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
     //                                  Train the MLP                                  //
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 
-    let mlp = 
-        MLP::new(2)
-        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
-        .add_layer(FullyConnected(16)).add_layer(NonLinear(ReLu))
+    let mlp = MLP::new(2)
+        .add_layer(FullyConnected(16))
+        .add_layer(NonLinear(ReLu))
+        .add_layer(FullyConnected(16))
+        .add_layer(NonLinear(ReLu))
         .add_layer(FullyConnected(1))
         .build();
 
@@ -74,13 +73,19 @@ fn simple_plot() {
     let mut iterations = 0;
     let mut acc = 0.0;
     while acc < 1.0 {
-        loss.rand_batch_train(&mlp, &x_train, &y_train, 32, 0.01); 
-    
-        acc = x_train.iter().zip(y_train.iter())
-            .map( |(xs,ys)|  mlp.eval(&vec![xs[0], xs[1]])[0] * ys[0] )
-            .filter( |y| y >= &0.0 )
-            .count() as f64 / ((n1 + n2 + m1 + m2) as f64);
-        println!("[{:>6.3} accuracy at {:>3}'th iteration ]", acc, { iterations += 1; iterations }); 
+        loss.rand_batch_train(&mlp, &x_train, &y_train, 32, 0.01);
+
+        acc = x_train
+            .iter()
+            .zip(y_train.iter())
+            .map(|(xs, ys)| mlp.eval(&vec![xs[0], xs[1]])[0] * ys[0])
+            .filter(|y| y >= &0.0)
+            .count() as f64
+            / ((n1 + n2 + m1 + m2) as f64);
+        println!("[{:>6.3} accuracy at {:>3}'th iteration ]", acc, {
+            iterations += 1;
+            iterations
+        });
         io::stdout().flush().unwrap();
     }
 
@@ -108,32 +113,52 @@ fn simple_plot() {
     }
 
     let mut plot = Plot::new();
-    
-    let trace = Contour::new(x,y,z)
+
+    let trace = Contour::new(x, y, z)
         .auto_contour(false)
         .show_scale(false)
         .contours(Contours::new().start(-0.1).end(0.1));
     plot.add_trace(trace);
 
     let scatter_pos = Scatter::new(
-            x_train.iter().zip(y_train.iter()).filter( |(_,y)| y[0] < 0.0 ).map( |(x,_)| x[0] ).collect::<Vec<f64>>(),
-            x_train.iter().zip(y_train.iter()).filter( |(_,y)| y[0] < 0.0 ).map( |(x,_)| x[1] ).collect::<Vec<f64>>()
-        )
-        .name("Positive Example")
-        .mode(Mode::Markers)
-        .marker(Marker::new().size(10).color(NamedColor::Blue));
+        x_train
+            .iter()
+            .zip(y_train.iter())
+            .filter(|(_, y)| y[0] < 0.0)
+            .map(|(x, _)| x[0])
+            .collect::<Vec<f64>>(),
+        x_train
+            .iter()
+            .zip(y_train.iter())
+            .filter(|(_, y)| y[0] < 0.0)
+            .map(|(x, _)| x[1])
+            .collect::<Vec<f64>>(),
+    )
+    .name("Positive Example")
+    .mode(Mode::Markers)
+    .marker(Marker::new().size(10).color(NamedColor::Blue));
     plot.add_trace(scatter_pos);
 
     let scatter_neg = Scatter::new(
-            x_train.iter().zip(y_train.iter()).filter( |(_,y)| y[0] > 0.0 ).map( |(x,_)| x[0] ).collect::<Vec<f64>>(),
-            x_train.iter().zip(y_train.iter()).filter( |(_,y)| y[0] > 0.0 ).map( |(x,_)| x[1] ).collect::<Vec<f64>>()
-        )
-        .name("Negative Example")
-        .mode(Mode::Markers)
-        .marker(Marker::new().size(10).color(NamedColor::Red));
+        x_train
+            .iter()
+            .zip(y_train.iter())
+            .filter(|(_, y)| y[0] > 0.0)
+            .map(|(x, _)| x[0])
+            .collect::<Vec<f64>>(),
+        x_train
+            .iter()
+            .zip(y_train.iter())
+            .filter(|(_, y)| y[0] > 0.0)
+            .map(|(x, _)| x[1])
+            .collect::<Vec<f64>>(),
+    )
+    .name("Negative Example")
+    .mode(Mode::Markers)
+    .marker(Marker::new().size(10).color(NamedColor::Red));
     plot.add_trace(scatter_neg);
 
-    plot.show_image(ImageFormat::PNG, 1024, 680);    
+    plot.show_image(ImageFormat::PNG, 1024, 680);
     println!("{}", mlp);
 }
 

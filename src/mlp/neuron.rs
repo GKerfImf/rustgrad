@@ -1,27 +1,26 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-use rand::Rng;
-use rand_distr::{Normal, Distribution};
 use core::slice::Iter;
-use std::{iter, fmt};
+use rand::Rng;
+use rand_distr::{Distribution, Normal};
+use std::{fmt, iter};
 
+use crate::core::core::{backward, forward, topological_sort, update_weights};
+use crate::core::core::{RefValue, Value};
 use crate::core::nonlinearity::NonLinearity;
-use crate::core::core::{Value, RefValue};
-use crate::core::core::{topological_sort, backward, forward, update_weights};
 
 #[derive(Debug)]
 pub struct Neuron {
-    ins: Vec<RefValue>,         // Input variables
-    out: RefValue,              // Output variable
+    ins: Vec<RefValue>, // Input variables
+    out: RefValue,      // Output variable
 
-    w: Vec<RefValue>,           // Weight variables
-    b: RefValue,                // Bias variable
-    parameters: Vec<RefValue>,  // All parameters (weights + bias)
+    w: Vec<RefValue>,          // Weight variables
+    b: RefValue,               // Bias variable
+    parameters: Vec<RefValue>, // All parameters (weights + bias)
 }
 
 impl Neuron {
-
     // The first argument is a vector of input variables
     // The second argument is a vector of parameters (bias + weights)
     pub fn from_vec(ins: Vec<RefValue>, parameters: Vec<f64>) -> Neuron {
@@ -40,22 +39,26 @@ impl Neuron {
         let bias: RefValue = Value::new(parameters[0]);
 
         // Create a vector of all parameters
-        let params = weights.iter()
-            .map( |rv| rv.clone() )
+        let params = weights
+            .iter()
+            .map(|rv| rv.clone())
             .chain(iter::once(bias.clone()))
             .collect::<Vec<RefValue>>();
 
         // [out = ins * weights + bias]
-        let out = ins.iter().zip(weights.iter())
-            .map( |(i,w)| i.clone() * w.clone() )
-            .sum::<RefValue>() + bias.clone();
+        let out = ins
+            .iter()
+            .zip(weights.iter())
+            .map(|(i, w)| i.clone() * w.clone())
+            .sum::<RefValue>()
+            + bias.clone();
 
         Neuron {
             ins,
             out,
             w: weights,
             b: bias,
-            parameters: params
+            parameters: params,
         }
     }
 
@@ -66,14 +69,14 @@ impl Neuron {
         Neuron::from_vec(
             ins,
             // append 0.0 (bias) to vector of random gaussians (weights)
-            iter::once(0.0).chain(
-                (0..len).map( |_| normal.sample(&mut rand::thread_rng()) )
-            ).collect::<Vec<f64>>()
+            iter::once(0.0)
+                .chain((0..len).map(|_| normal.sample(&mut rand::thread_rng())))
+                .collect::<Vec<f64>>(),
         )
     }
 
     pub fn get_weights(&self) -> Vec<f64> {
-        self.w.iter().map( |rv| rv.get_data() ).collect::<Vec<f64>>()
+        self.w.iter().map(|rv| rv.get_data()).collect::<Vec<f64>>()
     }
 
     pub fn get_bias(&self) -> f64 {
@@ -91,24 +94,25 @@ impl Neuron {
     pub fn get_output_variable(&self) -> RefValue {
         self.out.clone()
     }
-
 }
 
 impl fmt::Display for Neuron {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
-        write!(f," [")?;
+        write!(f, " [")?;
         for w in 0..self.w.len() {
-            write!(f, "{val:>8.3} ", val=self.w[w].get_data())?;
+            write!(f, "{val:>8.3} ", val = self.w[w].get_data())?;
         }
-        write!(f,"]")?;
-        write!(f, " + ({val:>8.3}) ", val=self.b.get_data())?;
-        writeln!(f, " ==> {val:>8.3} ", val=self.get_output_variable().get_data())?;
+        write!(f, "]")?;
+        write!(f, " + ({val:>8.3}) ", val = self.b.get_data())?;
+        writeln!(
+            f,
+            " ==> {val:>8.3} ",
+            val = self.get_output_variable().get_data()
+        )?;
 
         Ok(())
     }
 }
-
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 //                                      Tests                                      //
@@ -119,17 +123,17 @@ mod tests {
 
     #[cfg(test)]
     mod neurons {
-        use more_asserts as ma;
-        use crate::core::nonlinearity::*;
         use crate::core::core::*;
+        use crate::core::nonlinearity::*;
         use crate::mlp::neuron::Neuron;
+        use more_asserts as ma;
 
         #[test]
         fn basic() {
             let a = Value::new(1.0);
             let b = Value::new(2.0);
             let c = Value::new(3.0);
-            let n = Neuron::from_vec(vec![a,b,c], vec![1.0, 1.0,2.0,3.0]);
+            let n = Neuron::from_vec(vec![a, b, c], vec![1.0, 1.0, 2.0, 3.0]);
             //                                         ^^^ -- bias
 
             let top_sort = topological_sort(n.out.clone());
@@ -142,7 +146,7 @@ mod tests {
         fn basic2() {
             let a = Value::new(-4.02704492547);
             let b = Value::new(2.0);
-            let n = Neuron::from_vec(vec![a,b], vec![1.0, 1.0, 2.0]);
+            let n = Neuron::from_vec(vec![a, b], vec![1.0, 1.0, 2.0]);
 
             // [o = tanh(1.0 + 1.0*a + 2.0*b)]
             let o = n.out.clone().tanh();
@@ -157,7 +161,10 @@ mod tests {
             let a = Value::new(1.0);
             let b = Value::new(2.0);
             let c = Value::new(3.0);
-            let n = Neuron::from_vec(vec![a.clone(),b.clone(),c.clone()], vec![1.0, 11.0,22.0,33.0]);
+            let n = Neuron::from_vec(
+                vec![a.clone(), b.clone(), c.clone()],
+                vec![1.0, 11.0, 22.0, 33.0],
+            );
 
             let top_sort = topological_sort(n.out.clone());
 

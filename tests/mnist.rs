@@ -10,8 +10,8 @@ mod tests {
 
         use rustgrad::core::nonlinearity::NonLinearity::*;
         use rustgrad::mlp::layer::LayerSpec::*;
-        use rustgrad::mlp::mlp::MLP;
         use rustgrad::mlp::loss::{Loss, LossSpec};
+        use rustgrad::mlp::mlp::MLP;
 
         #[test]
         #[ignore]
@@ -62,32 +62,41 @@ mod tests {
             // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
 
             // Prepare the training data
-            let x_train =
-                (0..train).map( |image_num|
-                    train_data.slice(s![image_num, .., ..])
-                    .iter().map( |x| *x as f64 )
-                    .collect::<Vec<f64>>()
-                ).collect::<Vec<Vec<f64>>>();
+            let x_train = (0..train)
+                .map(|image_num| {
+                    train_data
+                        .slice(s![image_num, .., ..])
+                        .iter()
+                        .map(|x| *x as f64)
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>();
 
-            let y_train =
-                (0..train).map( |image_num|
-                    train_labels.slice(s![image_num, ..])
-                    .iter().flat_map( |x| one_hot(*x) )
-                    .collect::<Vec<f64>>()
-                ).collect::<Vec<Vec<f64>>>();
+            let y_train = (0..train)
+                .map(|image_num| {
+                    train_labels
+                        .slice(s![image_num, ..])
+                        .iter()
+                        .flat_map(|x| one_hot(*x))
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>();
 
             println!("Constructing the model...");
-            let mlp =
-                MLP::new(784)
-                    .add_layer(FullyConnected(22))
-                    .add_layer(NonLinear(ReLu))
-                    .add_layer(FullyConnected(10))
-                    .build();
+            let mlp = MLP::new(784)
+                .add_layer(FullyConnected(22))
+                .add_layer(NonLinear(ReLu))
+                .add_layer(FullyConnected(10))
+                .build();
             let loss = Loss::new(&mlp).add_loss(LossSpec::MultiHinge).build();
 
             println!("Training the model...");
             for i in 0..TRAIN_ITER {
-                print!("\rLoss = {:.8}, \t Iter = {}", loss.rand_batch_train(&mlp, &x_train, &y_train, 64, 0.2), i);
+                print!(
+                    "\rLoss = {:.8}, \t Iter = {}",
+                    loss.rand_batch_train(&mlp, &x_train, &y_train, 64, 0.2),
+                    i
+                );
                 io::stdout().flush().unwrap();
             }
             println!();
@@ -96,27 +105,47 @@ mod tests {
             //                              Evaluate on dev data                               //
             // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
             // Prepare dev data
-            let x_dev =
-                (train..train+dev).map( |image_num|
-                    train_data.slice(s![image_num, .., ..])
-                    .iter().map( |x| *x as f64 )
-                    .collect::<Vec<f64>>()
-                ).collect::<Vec<Vec<f64>>>();
+            let x_dev = (train..train + dev)
+                .map(|image_num| {
+                    train_data
+                        .slice(s![image_num, .., ..])
+                        .iter()
+                        .map(|x| *x as f64)
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>();
 
-            let y_dev =
-                (train..train+dev).map( |image_num|
-                    train_labels.slice(s![image_num, ..])
-                    .iter().flat_map( |x| one_hot(*x) )
-                    .collect::<Vec<f64>>()
-                ).collect::<Vec<Vec<f64>>>();
+            let y_dev = (train..train + dev)
+                .map(|image_num| {
+                    train_labels
+                        .slice(s![image_num, ..])
+                        .iter()
+                        .flat_map(|x| one_hot(*x))
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>();
 
             println!("--------------------------------Accuracy on dev data--------------------------------");
-            let right_predictions = (0..dev).map( |i| {
-                let prediction : usize = mlp.eval(&x_dev[i]).iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
-                let label : usize = y_dev[i].iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
+            let right_predictions = (0..dev).map(|i| {
+                let prediction: usize = mlp
+                    .eval(&x_dev[i])
+                    .iter()
+                    .enumerate()
+                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                    .unwrap()
+                    .0;
+                let label: usize = y_dev[i]
+                    .iter()
+                    .enumerate()
+                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                    .unwrap()
+                    .0;
                 (prediction == label) as i32
             });
-            println!("Accuracy on dev: {}", right_predictions.sum::<i32>() as f64 / dev as f64);
+            println!(
+                "Accuracy on dev: {}",
+                right_predictions.sum::<i32>() as f64 / dev as f64
+            );
 
             // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
             //                              Run on the test data                               //
@@ -130,28 +159,47 @@ mod tests {
                 .expect("Error converting testing labels to Array2 struct")
                 .map(|x| *x as f64);
 
-            let x_test =
-                (0..test).map( |image_num|
-                    test_data.slice(s![image_num, .., ..])
-                    .iter().map( |x| *x as f64 )
-                    .collect::<Vec<f64>>()
-                ).collect::<Vec<Vec<f64>>>();
+            let x_test = (0..test)
+                .map(|image_num| {
+                    test_data
+                        .slice(s![image_num, .., ..])
+                        .iter()
+                        .map(|x| *x as f64)
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>();
 
-            let y_test =
-                (0..test).map( |image_num|
-                    test_labels.slice(s![image_num, ..])
-                    .iter().flat_map( |x| one_hot(*x) )
-                    .collect::<Vec<f64>>()
-                ).collect::<Vec<Vec<f64>>>();
+            let y_test = (0..test)
+                .map(|image_num| {
+                    test_labels
+                        .slice(s![image_num, ..])
+                        .iter()
+                        .flat_map(|x| one_hot(*x))
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>();
 
             println!("-------------------------------Accuracy on test data--------------------------------");
-            let right_predictions = (0..test).map( |i| {
-                let prediction : usize = mlp.eval(&x_test[i]).iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
-                let label : usize = y_test[i].iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
+            let right_predictions = (0..test).map(|i| {
+                let prediction: usize = mlp
+                    .eval(&x_test[i])
+                    .iter()
+                    .enumerate()
+                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                    .unwrap()
+                    .0;
+                let label: usize = y_test[i]
+                    .iter()
+                    .enumerate()
+                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                    .unwrap()
+                    .0;
                 (prediction == label) as i32
             });
-            println!("Accuracy on test: {}", right_predictions.sum::<i32>() as f64 / test as f64);
-
+            println!(
+                "Accuracy on test: {}",
+                right_predictions.sum::<i32>() as f64 / test as f64
+            );
         }
     }
 }
