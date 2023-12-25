@@ -1,3 +1,5 @@
+#![allow(clippy::new_ret_no_self)]
+
 use std::clone::Clone;
 use std::collections::HashSet;
 use std::iter::Sum;
@@ -5,7 +7,7 @@ use std::ops::{Add, Deref, Mul, Sub};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::{cell::RefCell, rc::Rc};
 
-use crate::core::op::Op;
+use crate::autograd::op::Op;
 use crate::util::itermax::IterMax;
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- //
@@ -437,7 +439,7 @@ mod tests {
 
     #[cfg(test)]
     mod value {
-        use crate::core::core::*;
+        use crate::autograd::core::*;
         use crate::util::itermax::IterMaxExt;
         use more_asserts as ma;
         use rand::Rng;

@@ -1,3 +1,3 @@
-pub mod core;
-pub mod mlp;
+pub mod autograd;
+pub mod structures;
 pub mod util;

@@ -1,13 +1,11 @@
-#![allow(unused_imports)]
 #![allow(dead_code)]
+#![allow(clippy::new_ret_no_self)]
 
-use rand_distr::Distribution;
 use std::fmt;
 
-use crate::core::core::{backward, forward, topological_sort};
-use crate::core::core::{RefValue, Value};
-use crate::core::nonlinearity::NonLinearity;
-use crate::mlp::layer::{Layer, LayerSpec};
+use crate::autograd::core::{backward, forward, topological_sort};
+use crate::autograd::core::{RefValue, Value};
+use crate::structures::layer::{Layer, LayerSpec};
 
 // MultiLayer Perceptron
 #[derive(Debug)]
@@ -43,7 +41,7 @@ impl MPLBuilder {
             outs = l.get_out_variables();
             layers.push(l);
         }
-        let uni_out = outs.clone().iter().map(|i| i.clone()).sum::<RefValue>();
+        let uni_out = outs.clone().iter().cloned().sum::<RefValue>();
         let top_sort = topological_sort(uni_out.clone());
 
         MLP {
@@ -71,7 +69,7 @@ impl MLP {
         self.layers
             .iter()
             .flat_map(|l| l.get_parameters())
-            .map(|rv| rv.clone())
+            .cloned()
             .collect::<Vec<RefValue>>()
     }
 

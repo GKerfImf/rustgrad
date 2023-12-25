@@ -1,14 +1,11 @@
-#![allow(unused_imports)]
 #![allow(dead_code)]
 
 use core::slice::Iter;
-use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use std::{fmt, iter};
 
-use crate::core::core::{backward, forward, topological_sort, update_weights};
-use crate::core::core::{RefValue, Value};
-use crate::core::nonlinearity::NonLinearity;
+use crate::autograd::core::update_weights;
+use crate::autograd::core::{RefValue, Value};
 
 #[derive(Debug)]
 pub struct Neuron {
@@ -33,15 +30,15 @@ impl Neuron {
 
         // Create a vector of weights and a bias variable
         let mut weights: Vec<RefValue> = Vec::with_capacity(nweights);
-        for i in 1..=nweights {
-            weights.push(Value::new(parameters[i]));
+        for param in parameters.iter().take(nweights + 1).skip(1) {
+            weights.push(Value::new(*param));
         }
         let bias: RefValue = Value::new(parameters[0]);
 
         // Create a vector of all parameters
         let params = weights
             .iter()
-            .map(|rv| rv.clone())
+            .cloned()
             .chain(iter::once(bias.clone()))
             .collect::<Vec<RefValue>>();
 
@@ -123,9 +120,8 @@ mod tests {
 
     #[cfg(test)]
     mod neurons {
-        use crate::core::core::*;
-        use crate::core::nonlinearity::*;
-        use crate::mlp::neuron::Neuron;
+        use crate::autograd::core::*;
+        use crate::structures::neuron::Neuron;
         use more_asserts as ma;
 
         #[test]

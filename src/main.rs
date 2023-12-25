@@ -1,16 +1,15 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
+#![allow(clippy::new_ret_no_self)]
 
-use rustgrad::core::nonlinearity::NonLinearity::{ReLu, Tanh};
-use rustgrad::mlp::layer::LayerSpec::*;
-use rustgrad::mlp::loss::{Loss, LossSpec};
-use rustgrad::mlp::mlp::MLP;
+use rustgrad::autograd::nonlinearity::NonLinearity::ReLu;
+use rustgrad::structures::layer::LayerSpec::*;
+use rustgrad::structures::loss::{Loss, LossSpec};
+use rustgrad::structures::mlp::MLP;
 
-use plotly::common::color::{Color, NamedColor};
-use plotly::common::{ColorScale, ColorScalePalette, Marker, Mode, Title};
+use plotly::common::color::NamedColor;
+use plotly::common::{Marker, Mode};
 use plotly::contour::Contours;
 use plotly::plot::ImageFormat;
-use plotly::{Contour, HeatMap, Layout, Plot, Scatter};
+use plotly::{Contour, Plot, Scatter};
 use rand::Rng;
 use std::f64::consts::PI;
 use std::io::{self, Write};
@@ -103,10 +102,10 @@ fn simple_plot() {
         y.push(value);
     }
 
-    for xi in 0..n {
+    for xi in x.iter() {
         let mut row = Vec::<f64>::new();
-        for yi in 0..n {
-            let zv = mlp.eval(&vec![y[yi], x[xi]])[0];
+        for yi in y.iter() {
+            let zv = mlp.eval(&vec![*yi, *xi])[0];
             row.push(zv);
         }
         z.push(row);

@@ -1,9 +1,10 @@
 #![allow(dead_code)]
+#![allow(clippy::new_ret_no_self)]
 
-use crate::core::core::update_weights;
-use crate::core::core::{RefValue, Value};
-use crate::core::nonlinearity::NonLinearity;
-use crate::mlp::neuron::Neuron;
+use crate::autograd::core::update_weights;
+use crate::autograd::core::{RefValue, Value};
+use crate::autograd::nonlinearity::NonLinearity;
+use crate::structures::neuron::Neuron;
 use crate::util::itermax::IterMaxExt;
 use core::slice::Iter;
 use std::fmt;
@@ -104,7 +105,7 @@ impl LayerBuilder {
         let params = neurons
             .iter()
             .flat_map(|n| n.get_parameters())
-            .map(|rv| rv.clone())
+            .cloned()
             .collect::<Vec<RefValue>>();
 
         Layer {
@@ -164,8 +165,8 @@ mod tests {
 
     #[cfg(test)]
     mod layers {
-        use crate::core::core::*;
-        use crate::mlp::layer::*;
+        use crate::autograd::core::*;
+        use crate::structures::layer::*;
 
         #[test]
         fn basic() {

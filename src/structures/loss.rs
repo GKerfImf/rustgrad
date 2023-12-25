@@ -1,10 +1,9 @@
-#![allow(unused_imports)]
 #![allow(dead_code)]
+#![allow(clippy::new_ret_no_self)]
 
-use crate::core::core::*;
-use crate::mlp::mlp::MLP;
+use crate::autograd::core::*;
+use crate::structures::mlp::MLP;
 use rand::Rng;
-use rand_distr::Distribution;
 
 pub enum LossSpec {
     CrossEntropy,
@@ -34,7 +33,7 @@ pub struct LossBuilder<'a> {
     reg_spec: Option<RegSpec>,
 }
 
-impl<'a> LossBuilder<'_> {
+impl LossBuilder<'_> {
     fn cross_entropy_loss(&self, exp_outs: Vec<RefValue>) -> RefValue {
         self.mlp
             .outs
@@ -107,17 +106,17 @@ impl<'a> LossBuilder<'_> {
     }
 
     pub fn build(&mut self) -> Loss {
-        let mut exp_outs: Vec<RefValue> = Vec::with_capacity(self.mlp.outs.len());
+        let mut expected_outs: Vec<RefValue> = Vec::with_capacity(self.mlp.outs.len());
         for _ in 0..self.mlp.outs.len() {
-            exp_outs.push(Value::new(0.0));
+            expected_outs.push(Value::new(0.0));
         }
 
         let data_loss = match self.loss_spec {
             None => Value::new(0.0),
-            Some(LossSpec::CrossEntropy) => self.cross_entropy_loss(exp_outs.clone()),
-            Some(LossSpec::BinaryHinge) => self.with_binary_hinge_loss(exp_outs.clone()),
-            Some(LossSpec::MultiHinge) => self.with_multi_class_hinge_loss(exp_outs.clone()),
-            Some(LossSpec::Squared) => self.with_squared_loss(exp_outs.clone()),
+            Some(LossSpec::CrossEntropy) => self.cross_entropy_loss(expected_outs.clone()),
+            Some(LossSpec::BinaryHinge) => self.with_binary_hinge_loss(expected_outs.clone()),
+            Some(LossSpec::MultiHinge) => self.with_multi_class_hinge_loss(expected_outs.clone()),
+            Some(LossSpec::Squared) => self.with_squared_loss(expected_outs.clone()),
         };
 
         let reg_loss = match self.reg_spec {
@@ -138,7 +137,7 @@ impl<'a> LossBuilder<'_> {
         Loss {
             ins: self.mlp.ins.clone(),
             mlp_outs: self.mlp.outs.clone(),
-            exp_outs: exp_outs,
+            exp_outs: expected_outs,
             loss: loss.clone(),
             top_sort: topological_sort(loss),
         }
@@ -214,13 +213,10 @@ mod tests {
     mod loss {
         use rand::Rng;
 
-        use crate::core::core::*;
-        use crate::mlp::layer::*;
-
-        use crate::core::nonlinearity::NonLinearity::{ReLu, Tanh};
-        use crate::mlp::layer::LayerSpec::*;
-        use crate::mlp::loss::{Loss, LossSpec};
-        use crate::mlp::mlp::MLP;
+        use crate::autograd::nonlinearity::NonLinearity::{ReLu, Tanh};
+        use crate::structures::layer::LayerSpec::*;
+        use crate::structures::loss::{Loss, LossSpec};
+        use crate::structures::mlp::MLP;
 
         // TODO: move to a separate module
         // TODO: remove duplication with tests::mnist::one_hot;

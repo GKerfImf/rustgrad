@@ -8,10 +8,10 @@ mod tests {
         use ndarray::prelude::*;
         use std::io::{self, Write};
 
-        use rustgrad::core::nonlinearity::NonLinearity::*;
-        use rustgrad::mlp::layer::LayerSpec::*;
-        use rustgrad::mlp::loss::{Loss, LossSpec};
-        use rustgrad::mlp::mlp::MLP;
+        use rustgrad::autograd::nonlinearity::NonLinearity::*;
+        use rustgrad::structures::layer::LayerSpec::*;
+        use rustgrad::structures::loss::{Loss, LossSpec};
+        use rustgrad::structures::mlp::MLP;
 
         #[test]
         #[ignore]
